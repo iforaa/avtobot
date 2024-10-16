@@ -2,10 +2,11 @@ import { Markup, Telegraf } from "telegraf";
 import { Command } from "./command.class";
 import { IBotContext } from "../context/context.interface";
 import { cleanUrl } from "../utils/cleanurl";
+import { BotService } from "../services/botservice";
 
 export class AddVehicleCommand extends Command {
-  constructor(bot: Telegraf<IBotContext>) {
-    super(bot);
+  constructor(bot: Telegraf<IBotContext>, botService: BotService) {
+    super(bot, botService);
   }
 
   handle(): void {
