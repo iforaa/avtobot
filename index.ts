@@ -1,31 +1,13 @@
-// import fetch from "node-fetch"; // To download the file
-// import * as fs from "fs"; // For file system operations
-// import * as path from "path";
-// import { createHash } from "crypto";
-// import { fileURLToPath } from "url";
-// import { dirname } from "path";
 // import vehicleWizardScene from "./vehicleWizardScene";
 
 // // import vehicleWizard from "./vehicleWizardScene";
 
 // // Fix __dirname for ES modules
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = dirname(__filename);
 
 // import { message } from "telegraf/filters";
 // import { Composer, Context, Scenes, session, Telegraf } from "telegraf";
 
 // const vehicleDatabase: { [key: string]: string } = {};
-// const PHOTO_FOLDER_PATH = path.resolve(__dirname, "vehicle_photos");
-
-// // Ensure the folder exists
-// if (!fs.existsSync(PHOTO_FOLDER_PATH)) {
-//   fs.mkdirSync(PHOTO_FOLDER_PATH);
-// }
-
-// function hashVehicleUrl(vehicleUrl: string) {
-//   return createHash("sha256").update(vehicleUrl).digest("hex").substring(0, 16); // Shorten hash to 8 characters
-// }
 
 // const bot = new Telegraf<Scenes.WizardContext>(
 //   "7938362393:AAEbQK4xOXcDvI5-9JpTqQh7EiBTTzCSfwk",

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "CommonJS",
+    "target": "es2020",
+    "module": "esnext",
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true
@@ -13,6 +13,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^0.10.1",
     "@telegraf/session": "^2.0.0-beta.7",
+    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "kysely": "^0.27.2",
     "node-fetch": "^3.3.2",

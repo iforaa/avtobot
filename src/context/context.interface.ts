@@ -1,11 +1,18 @@
 import { Context } from "telegraf";
+import { Scenes } from "telegraf";
+import { SessionContext } from "telegraf/typings/session";
 
-export interface SessionData {
+export interface SessionData extends Scenes.WizardSession<WizardSession> {
   passedValidation: boolean;
-  vehicleDatabase: { [key: string]: string };
-  vehicleUrl: string;
+  currentVehicleUrl: string;
+}
+
+interface WizardSession extends Scenes.WizardSessionData {
+  myWizardSessionProp: number;
 }
 
 export interface IBotContext extends Context {
   session: SessionData;
+  scene: Scenes.SceneContextScene<IBotContext, Scenes.WizardSessionData>;
+  wizard: Scenes.WizardContextWizard<IBotContext>;
 }

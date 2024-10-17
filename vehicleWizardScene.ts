@@ -209,27 +209,4 @@
 //   return url.substring(0, index);
 // }
 
-// async function downloadAndSaveFile(fileId: string, vehicleUrl: string) {
-//   // Get the file URL from Telegram
-//   const fileLink = await bot.telegram.getFileLink(fileId);
-
-//   // Hash the vehicle URL to use as part of the filename
-//   const hashedVehicleUrl = hashVehicleUrl(vehicleUrl);
-
-//   // Define the file path to save the photo locally
-//   const filePath = path.join(
-//     PHOTO_FOLDER_PATH,
-//     `${hashedVehicleUrl}_${fileId}.jpg`,
-//   );
-
-//   // Fetch and save the file
-//   const response = await fetch(fileLink);
-//   const buffer = await response.buffer();
-
-//   // Save the file to the specified path
-//   fs.writeFileSync(filePath, buffer);
-
-//   return filePath; // Return the file path to save in the database
-// }
-
 // export default vehicleWizardScene;

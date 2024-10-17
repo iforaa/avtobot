@@ -1,8 +1,9 @@
-import { Markup, Telegraf } from "telegraf";
+import { Composer, Markup, Telegraf } from "telegraf";
 import { Command } from "./command.class";
 import { IBotContext } from "../context/context.interface";
-import { DbService } from "../context/db.service";
 import { BotService } from "../services/botservice";
+import { WizardContext } from "telegraf/typings/scenes";
+import { Scenes } from "telegraf";
 
 export class StartCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
@@ -15,21 +16,26 @@ export class StartCommand extends Command {
       ctx.reply(
         "Привет! Это специализированный маркетплейс для автоподборщиков. Мы закрытый клуб для своих, чтобы присоедениться, тебе нужно ввести пригласительный код:",
       );
-      // if (ctx.session.passedValidation == false) {
-      this.bot.on("text", async (ctx) => {
-        const inviteCode = ctx.message?.text;
-        if (inviteCode === "123") {
-          await ctx.reply("Верный код. Добро пожаловать!");
-          ctx.session.passedValidation = true;
-          await showMainMenu(ctx);
-        } else {
-          await ctx.reply("Неверный код. Попробуй еще раз.");
-        }
-      });
-      // } else {
-      //   ctx.reply("Ты уже валидирован!");
-      //   showMainMenu(ctx);
-      // }
+      if (ctx.session.passedValidation == false) {
+        this.bot.on("text", async (ctx) => {
+          const inviteCode = ctx.message?.text;
+          if (inviteCode === "123") {
+            await ctx.reply("Верный код. Добро пожаловать!");
+            ctx.session.passedValidation = true;
+            await showMainMenu(ctx);
+          } else {
+            await ctx.reply("Неверный код. Попробуй еще раз.");
+          }
+        });
+      } else {
+        ctx.reply("Ты уже валидирован!");
+        showMainMenu(ctx);
+      }
+    });
+
+    this.bot.action("add_vehicle", async (ctx) => {
+      await ctx.reply("Введи URL из объявления:");
+      ctx.scene.enter("add_vehicle_scene");
     });
 
     async function showMainMenu(ctx: IBotContext) {
@@ -47,5 +53,9 @@ export class StartCommand extends Command {
         },
       });
     }
+  }
+
+  scenes(): Scenes.WizardScene<IBotContext>[] {
+    return [];
   }
 }
