@@ -13,7 +13,7 @@ export class BotService {
     this.vehicleRepository.addUser(userID);
   }
 
-  async getUser(userID: number): Promise<any> {
+  async getUser(userID: number): Promise<any[]> {
     return this.vehicleRepository.getUser(userID);
   }
 

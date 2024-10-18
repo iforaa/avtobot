@@ -22,7 +22,7 @@ export class StartCommand extends Command {
 
       const userId = ctx.from?.id;
       const user = await this.botService.getUser(userId);
-
+      console.log(user);
       if (user.length == 0) {
         this.botService.addUser(userId);
       }

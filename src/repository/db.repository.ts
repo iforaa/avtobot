@@ -10,7 +10,7 @@ export class DBRepository {
     return result.id;
   }
 
-  async getUser(userID: number): Promise<any> {
+  async getUser(userID: number): Promise<any[]> {
     const query = "SELECT * FROM users WHERE user_id=$1";
     const result = await this.dbService.query(query, [userID]);
     return result;
