@@ -9,13 +9,25 @@ export class BotService {
     private readonly datastoreService: DatastoreService,
   ) {}
 
-  async addVehicle(vehicleName: string): Promise<number> {
+  async addUser(userID: number) {
+    this.vehicleRepository.addUser(userID);
+  }
+
+  async getUser(userID: number): Promise<any> {
+    return this.vehicleRepository.getUser(userID);
+  }
+
+  async addVehicle(vehicleName: string, userID: number): Promise<number> {
     // Perform any business logic or validation here if needed
     if (!vehicleName) {
       throw new Error("Vehicle name is required");
     }
 
-    return this.vehicleRepository.addVehicle(cleanUrl(vehicleName));
+    return this.vehicleRepository.addVehicle(cleanUrl(vehicleName), userID);
+  }
+
+  async getVehiclesByUserId(userId: number): Promise<any[]> {
+    return this.vehicleRepository.getVehiclesByUserId(userId);
   }
 
   async getVehicleById(vehicleId: number): Promise<any> {
@@ -36,6 +48,10 @@ export class BotService {
       description,
       url,
     );
+  }
+
+  async getPhotosOfVehicle(vehicleUrl: string): Promise<string[]> {
+    return await this.vehicleRepository.getPhotosByVehicleUrl(vehicleUrl);
   }
 
   async addPhotoToVehicle(filename: string, vehicleUrl: string) {

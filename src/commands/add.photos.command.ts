@@ -23,7 +23,7 @@ export class AddPhotoCommand extends Command {
       return await ctx.scene.enter("add_photo_scene");
     });
 
-    this.bot.action("go_back", async (ctx) => {
+    this.bot.action("go_to_add_vehicle_scene", async (ctx) => {
       await ctx.scene.leave();
       return await ctx.scene.enter("add_vehicle_scene");
     });
@@ -69,10 +69,12 @@ export class AddPhotoCommand extends Command {
                 callback_data: "add_another_photo",
               },
             ],
-            [{ text: "Назад", callback_data: "go_back" }],
+            [{ text: "Назад", callback_data: "go_to_add_vehicle_scene" }],
           ],
         },
       });
+
+      return ctx.scene.leave();
     });
 
     const addPhotoScene = new Scenes.WizardScene<IBotContext>(

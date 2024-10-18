@@ -3,11 +3,30 @@ import { DbService } from "../services/db.service";
 export class DBRepository {
   constructor(private readonly dbService: DbService) {}
 
-  async addVehicle(url: string): Promise<number> {
+  async addUser(userID: number) {
     const query =
-      "INSERT INTO vehicles (url, user_id) VALUES ($1, 1) RETURNING id";
-    const result = await this.dbService.query(query, [url]);
+      "INSERT INTO users (username, user_id) VALUES ($1, $2) RETURNING id";
+    const result = await this.dbService.query(query, ["_", userID]);
     return result.id;
+  }
+
+  async getUser(userID: number): Promise<any> {
+    const query = "SELECT * FROM users WHERE user_id=$1";
+    const result = await this.dbService.query(query, [userID]);
+    return result;
+  }
+
+  async addVehicle(url: string, userID: number): Promise<number> {
+    const query =
+      "INSERT INTO vehicles (url, user_id) VALUES ($1, $2) RETURNING id";
+    const result = await this.dbService.query(query, [url, userID]);
+    return result.id;
+  }
+
+  async getVehiclesByUserId(userId: number): Promise<any[]> {
+    const query = "SELECT * FROM vehicles WHERE user_id = $1";
+    const result = await this.dbService.query(query, [userId]);
+    return result;
   }
 
   async getVehicleById(vehicleId: number): Promise<any> {
@@ -36,6 +55,30 @@ export class DBRepository {
       throw error;
     }
   }
+
+  async getPhotosByVehicleUrl(vehicleUrl: string): Promise<string[]> {
+    const query = `
+      SELECT p.photo_url
+      FROM photos p
+      JOIN vehicles v ON p.vehicle_id = v.id
+      WHERE v.url = $1;
+    `;
+
+    try {
+      const result = await this.dbService.query(query, [vehicleUrl]);
+
+      if (result.length > 0) {
+        // Extract photo URLs from the query result
+        return result.map((row: any) => row.photo_url);
+      } else {
+        return []; // No photos found for this vehicle
+      }
+    } catch (error) {
+      console.error("Error retrieving photos for vehicle:", error);
+      throw error;
+    }
+  }
+
   async addPhotoToVehicle(filename: string, vehicleUrl: string): Promise<any> {
     const query = `
       WITH vehicle AS (
