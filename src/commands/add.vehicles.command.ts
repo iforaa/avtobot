@@ -16,6 +16,19 @@ export class AddVehicleCommand extends Command {
     this.bot.action("go_to_start_scene", (ctx) =>
       ctx.scene.enter("start_scene"),
     );
+    // this.bot.action("edit_photo", async (ctx) => {
+
+    // });
+    //
+    this.bot.action("go_back_from_view_photos", async (ctx) => {
+      try {
+        for (const message of ctx.session.mediaGroupMessage) {
+          await ctx.deleteMessage(message.message_id);
+        }
+      } catch {}
+      ctx.scene.enter("add_vehicle_scene");
+    });
+
     this.bot.action("view_vehicle_photos", async (ctx) => {
       const vehicleUrl = ctx.session.currentVehicleUrl;
 
@@ -38,8 +51,30 @@ export class AddVehicleCommand extends Command {
 
         // Send the photos as an album
         try {
-          await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup);
-          await ctx.reply("✅ Фотки доставлены!");
+          await ctx.deleteMessage();
+          ctx.session.mediaGroupMessage = await ctx.telegram.sendMediaGroup(
+            ctx.chat!.id,
+            mediaGroup,
+          );
+          ctx.session.canBeEditedMessage = await ctx.reply(
+            "✅ Фотки доставлены!",
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "Назад",
+                      callback_data: "go_back_from_view_photos",
+                    },
+                    {
+                      text: "Редактировать фото",
+                      callback_data: "edit_photo",
+                    },
+                  ],
+                ],
+              },
+            },
+          );
         } catch (error) {
           console.error("Error sending photo album:", error);
           await ctx.reply("❌ Не удалось отправить альбом фотографий.");
@@ -57,7 +92,7 @@ export class AddVehicleCommand extends Command {
     const addVehicleScene = new Scenes.WizardScene<IBotContext>(
       "add_vehicle_scene",
       async (ctx) => {
-        const loadingMessage = await ctx.reply("Загружаем авто");
+        // const loadingMessage = await ctx.reply("Загружаем авто");
 
         const vehicle = await this.botService.getVehicleByProvidedData(
           ctx.session.currentVehicleUrl,
@@ -79,10 +114,7 @@ export class AddVehicleCommand extends Command {
 
         // message += `Загружено фото: ${photoCount}\n`;
 
-        await ctx.telegram.editMessageText(
-          loadingMessage.chat.id, // Chat ID
-          loadingMessage.message_id, // Message ID to edit
-          undefined, // No inline message ID
+        await ctx.replyOrEditMessage(
           message, // New content
           {
             reply_markup: {
@@ -112,8 +144,12 @@ export class AddVehicleCommand extends Command {
         description || "",
         currentVehicleUrl,
       );
-
       await ctx.reply("Описание добавлено успешно!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -122,6 +158,14 @@ export class AddVehicleCommand extends Command {
     const editDescScene = new Scenes.WizardScene<IBotContext>(
       "edit_descr_scene",
       async (ctx) => {
+        const description = await this.botService.getDescriptionByVehicle(
+          ctx.session.currentVehicleUrl,
+        );
+
+        if (description && description.length > 0) {
+          await ctx.reply("Текущее описание:");
+          await ctx.reply(`${description}`);
+        }
         await ctx.reply("Введите описание для этого автомобиля:");
         return ctx.wizard.next();
       },

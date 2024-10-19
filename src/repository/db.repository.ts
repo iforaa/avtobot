@@ -35,6 +35,24 @@ export class DBRepository {
     return result.rows[0];
   }
 
+  async getDescriptionByVehicleUrl(url: string): Promise<string | null> {
+    const query = "SELECT description FROM vehicles WHERE url = $1";
+
+    try {
+      const result = await this.dbService.query(query, [url]);
+
+      // Check if the vehicle was found
+      if (result.length > 0) {
+        return result[0].description; // Return the description
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error retrieving vehicle description:", error);
+      throw error;
+    }
+  }
+
   async addDescriptionToVehicle(
     description: string,
     url: string,

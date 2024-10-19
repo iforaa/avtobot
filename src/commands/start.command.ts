@@ -15,7 +15,7 @@ export class StartCommand extends Command {
   handle(): void {
     this.bot.start(async (ctx) => {
       console.log(ctx.session);
-
+      ctx.session.canBeEditedMessage = null;
       ctx.reply(
         "Привет! Это специализированный маркетплейс для автоподборщиков. Мы закрытый клуб для своих, чтобы присоедениться, тебе нужно ввести пригласительный код:",
       );
@@ -27,7 +27,7 @@ export class StartCommand extends Command {
         this.botService.addUser(userId);
       }
 
-      if (ctx.session.passedValidation == false) {
+      if (ctx.session.passedValidation === false) {
         this.bot.on("text", async (ctx) => {
           const inviteCode = ctx.message?.text;
           if (inviteCode === "123") {
@@ -109,7 +109,8 @@ export class StartCommand extends Command {
           [{ text: "Назад", callback_data: "go_to_start_scene" }], // "Back" button
         );
         // Send the combined message with information about all vehicles
-        await ctx.reply(message, {
+
+        await ctx.replyOrEditMessage(message, {
           reply_markup: {
             inline_keyboard: inlineKeyboard,
           },
@@ -135,6 +136,9 @@ export class StartCommand extends Command {
         );
         if (vehicle) {
           await ctx.reply("Авто уже есть в базе данных.");
+          ctx.session.canBeEditedMessage = await ctx.reply(
+            "[тут будет новое авто]",
+          );
           ctx.session.currentVehicleUrl = cleanUrl(ctx.message?.text);
         } else {
           const userId = ctx.from?.id;
@@ -143,6 +147,9 @@ export class StartCommand extends Command {
             ctx.message?.text,
           );
           await ctx.reply("Новое авто добавлено!");
+          ctx.session.canBeEditedMessage = await ctx.reply(
+            "[тут будет новое авто]",
+          );
           ctx.session.currentVehicleUrl = cleanUrl(ctx.message?.text);
         }
         ctx.scene.leave();
@@ -154,7 +161,7 @@ export class StartCommand extends Command {
     const startScene = new Scenes.WizardScene<IBotContext>(
       "start_scene",
       async (ctx) => {
-        await ctx.reply("Главное Меню", {
+        await ctx.replyOrEditMessage("Главное Меню", {
           reply_markup: {
             inline_keyboard: [
               [{ text: "Добавить авто", callback_data: "add_vehicle" }],

@@ -21,6 +21,41 @@ class Bot {
   constructor(private readonly configService: IConfigService) {
     this.bot = new Telegraf<IBotContext>(this.configService.get("TOKEN"));
     this.bot.use(new LocalSession({ database: "sessions.json" }).middleware());
+    this.bot.use(async (ctx, next) => {
+      ctx.replyOrEditMessage = async (
+        text: string,
+        keyboardOptions: object,
+      ) => {
+        if (
+          ctx.session.canBeEditedMessage !== null &&
+          ctx.session.canBeEditedMessage !== undefined
+        ) {
+          try {
+            ctx.session.canBeEditedMessage = await ctx.telegram.editMessageText(
+              ctx.session.canBeEditedMessage.chat.id,
+              ctx.session.canBeEditedMessage.message_id,
+              undefined,
+              text,
+              keyboardOptions,
+            );
+          } catch (error) {
+            console.log(error);
+            ctx.session.canBeEditedMessage = await ctx.reply(
+              text,
+              keyboardOptions,
+            );
+          }
+        } else {
+          ctx.session.canBeEditedMessage = await ctx.reply(
+            text,
+            keyboardOptions,
+          );
+        }
+        return;
+      };
+
+      return next();
+    });
 
     this.botService = new BotService(
       new DBRepository(new DbService(this.configService.get("PG_ADDRESS"))),

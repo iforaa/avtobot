@@ -43,6 +43,9 @@ export class BotService {
     }
   }
 
+  async getDescriptionByVehicle(url: string): Promise<string | null> {
+    return await this.vehicleRepository.getDescriptionByVehicleUrl(url);
+  }
   async addDescriptionToVehicle(description: string, url: string) {
     const newDescription = this.vehicleRepository.addDescriptionToVehicle(
       description,
