@@ -57,7 +57,7 @@ export class StartCommand extends Command {
     for (let i = 0; i < 10; i++) {
       this.bot.action(`open_vehicle_${i + 1}`, async (ctx) => {
         console.log(`Opening vehicle ${i + 1}`);
-        ctx.session.currentVehicleUrl = ctx.session.vehicles[i].url;
+        ctx.session.currentVehicleID = ctx.session.vehicles[i].id;
         return ctx.scene.enter("add_vehicle_scene");
       });
     }
@@ -127,35 +127,72 @@ export class StartCommand extends Command {
       return ctx.scene.leave();
     });
 
+    // addVehicleHandler.action("add_vehicle", async (ctx) => {
+    //   await ctx.reply("Введи URL из объявления:");
+
+    //   addVehicleHandler.on("text", async (ctx) => {
+    //     const vehicle = await this.botService.getVehicleByProvidedData(
+    //       ctx.message?.text,
+    //     );
+    //     if (vehicle) {
+    //       await ctx.reply("Авто уже есть в базе данных.");
+    //       ctx.session.canBeEditedMessage = await ctx.reply(
+    //         "[тут будет новое авто]",
+    //       );
+    //       ctx.session.currentVehicleUrl = cleanUrl(ctx.message?.text);
+    //     } else {
+    //       const userId = ctx.from?.id;
+    //       await this.botService.addVehicle(ctx.message?.text, userId);
+    //       const vehicle = await this.botService.getVehicleByProvidedData(
+    //         ctx.message?.text,
+    //       );
+    //       await ctx.reply("Новое авто добавлено!");
+    //       ctx.session.canBeEditedMessage = await ctx.reply(
+    //         "[тут будет новое авто]",
+    //       );
+    //       ctx.session.currentVehicleUrl = cleanUrl(ctx.message?.text);
+    //     }
+    //     ctx.scene.leave();
+    //     return ctx.scene.enter("add_vehicle_scene");
+    //   });
+    //   // ctx.wizard.next();
+    // });
+
     addVehicleHandler.action("add_vehicle", async (ctx) => {
-      await ctx.reply("Введи URL из объявления:");
+      await ctx.reply("Введи URL из объявления или VIN номер:");
 
       addVehicleHandler.on("text", async (ctx) => {
-        const vehicle = await this.botService.getVehicleByProvidedData(
-          ctx.message?.text,
-        );
-        if (vehicle) {
-          await ctx.reply("Авто уже есть в базе данных.");
-          ctx.session.canBeEditedMessage = await ctx.reply(
-            "[тут будет новое авто]",
+        const inputText = ctx.message?.text;
+
+        const userId = ctx.from?.id;
+        let vehicleID;
+
+        try {
+          const vehicle =
+            await this.botService.getVehicleByProvidedData(inputText);
+
+          if (!vehicle) {
+            await ctx.reply("Новое авто добавлено!");
+            vehicleID = await this.botService.addVehicleByProvidedData(
+              inputText,
+              userId,
+            );
+          } else {
+            await ctx.reply("Авто уже есть в базе данных.");
+            vehicleID = vehicle.id;
+          }
+
+          ctx.session.currentVehicleID = vehicleID;
+        } catch {
+          return await ctx.reply(
+            "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
           );
-          ctx.session.currentVehicleUrl = cleanUrl(ctx.message?.text);
-        } else {
-          const userId = ctx.from?.id;
-          await this.botService.addVehicle(ctx.message?.text, userId);
-          const vehicle = await this.botService.getVehicleByProvidedData(
-            ctx.message?.text,
-          );
-          await ctx.reply("Новое авто добавлено!");
-          ctx.session.canBeEditedMessage = await ctx.reply(
-            "[тут будет новое авто]",
-          );
-          ctx.session.currentVehicleUrl = cleanUrl(ctx.message?.text);
         }
+
+        ctx.session.canBeEditedMessage = await ctx.reply("Загружаем...");
         ctx.scene.leave();
         return ctx.scene.enter("add_vehicle_scene");
       });
-      // ctx.wizard.next();
     });
 
     const startScene = new Scenes.WizardScene<IBotContext>(

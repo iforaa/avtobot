@@ -13,6 +13,10 @@ export class AddVehicleCommand extends Command {
 
   handle(): void {
     this.bot.action("edit_info", (ctx) => ctx.scene.enter("edit_descr_scene"));
+    this.bot.action("setup_url_vin", (ctx) =>
+      ctx.scene.enter("setup_url_vin_scene"),
+    );
+
     this.bot.action("go_to_start_scene", (ctx) =>
       ctx.scene.enter("start_scene"),
     );
@@ -30,22 +34,31 @@ export class AddVehicleCommand extends Command {
     });
 
     this.bot.action("view_vehicle_photos", async (ctx) => {
-      const vehicleUrl = ctx.session.currentVehicleUrl;
+      const vehicleID = ctx.session.currentVehicleID;
 
-      if (!vehicleUrl) {
+      if (!vehicleID) {
         await ctx.reply("Пожалуйста, выберите авто.");
         return;
       }
-      const photos = await this.botService.getPhotosOfVehicle(vehicleUrl);
+      const photos = await this.botService.getPhotosOfVehicle(vehicleID);
 
       if (photos.length > 0) {
         const mediaGroup: MediaGroup = photos.slice(0, 10).map((photo) => {
+          const type = photo.includes("photos/") ? "photo" : "video";
+          let media = photo.includes("photos/")
+            ? photo.replace(
+                "photos/",
+                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+              )
+            : photo.replace(
+                "videos/",
+                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+              );
+          media += "/";
+          media += type;
           return {
-            type: "photo",
-            media: photo.replace(
-              "photos/",
-              "https://avtopodborbot.igor-n-kuz8044.workers.dev/downloadphoto/",
-            ), // Directly provide the URL string
+            type: type,
+            media: media,
           };
         });
 
@@ -56,25 +69,22 @@ export class AddVehicleCommand extends Command {
             ctx.chat!.id,
             mediaGroup,
           );
-          ctx.session.canBeEditedMessage = await ctx.reply(
-            "✅ Фотки доставлены!",
-            {
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: "Назад",
-                      callback_data: "go_back_from_view_photos",
-                    },
-                    {
-                      text: "Редактировать фото",
-                      callback_data: "edit_photo",
-                    },
-                  ],
+          ctx.session.canBeEditedMessage = await ctx.reply("✅ Доставлено!", {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "Назад",
+                    callback_data: "go_back_from_view_photos",
+                  },
+                  {
+                    text: "Редактировать фото",
+                    callback_data: "edit_photo",
+                  },
                 ],
-              },
+              ],
             },
-          );
+          });
         } catch (error) {
           console.error("Error sending photo album:", error);
           await ctx.reply("❌ Не удалось отправить альбом фотографий.");
@@ -88,20 +98,30 @@ export class AddVehicleCommand extends Command {
   scenes(): Scenes.WizardScene<IBotContext>[] {
     const addVehicleHandler = new Composer<IBotContext>();
     const editDescrHandler = new Composer<IBotContext>();
+    const setupURLVinHandler = new Composer<IBotContext>();
 
     const addVehicleScene = new Scenes.WizardScene<IBotContext>(
       "add_vehicle_scene",
       async (ctx) => {
         // const loadingMessage = await ctx.reply("Загружаем авто");
 
-        const vehicle = await this.botService.getVehicleByProvidedData(
-          ctx.session.currentVehicleUrl,
+        const vehicle = await this.botService.getVehicleById(
+          ctx.session.currentVehicleID,
         );
 
-        const vehicleUrl = vehicle.url;
         const vehicleDesc = vehicle.description;
+        let message = "";
+        if (vehicle.url) {
+          message = `Ссылка: ${vehicle.url}\n\n`;
+        } else {
+          message = `Ссылка не установлена\n\n`;
+        }
 
-        let message = `Информация о машине по ссылке: ${vehicleUrl}\n\n`;
+        if (vehicle.vin) {
+          message += `VIN: ${vehicle.vin}\n\n`;
+        } else {
+          message += "VIN номер не прописан.\n\n";
+        }
 
         if (vehicleDesc) {
           message += `Описание:\n${vehicleDesc}\n\n`;
@@ -120,14 +140,24 @@ export class AddVehicleCommand extends Command {
             reply_markup: {
               inline_keyboard: [
                 [
-                  { text: "Прикрепить фото", callback_data: "attach_photos" },
                   {
-                    text: "Показать Фото",
+                    text: "Прикрепить 📷/🎥",
+                    callback_data: "attach_photos",
+                  },
+                  {
+                    text: "Показать 📷/🎥",
                     callback_data: "view_vehicle_photos",
                   },
                   // { text: "Прикрепить видео", callback_data: "attach_video" },
                 ],
-                [{ text: "Добавить описание", callback_data: "edit_info" }],
+                [
+                  { text: "Добавить описание", callback_data: "edit_info" },
+                  {
+                    text: "Установить URL/VIN",
+                    callback_data: "setup_url_vin",
+                  },
+                ],
+
                 [{ text: "Назад", callback_data: "go_to_start_scene" }],
               ],
             },
@@ -139,12 +169,34 @@ export class AddVehicleCommand extends Command {
 
     editDescrHandler.on("text", async (ctx) => {
       const description = ctx.message.text;
-      const currentVehicleUrl = ctx.session.currentVehicleUrl;
+      const currentVehicleID = ctx.session.currentVehicleID;
       this.botService.addDescriptionToVehicle(
         description || "",
-        currentVehicleUrl,
+        currentVehicleID,
       );
       await ctx.reply("Описание добавлено успешно!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+
+    setupURLVinHandler.on("text", async (ctx) => {
+      const data = ctx.message.text;
+      const currentVehicleID = ctx.session.currentVehicleID;
+
+      try {
+        await this.botService.editVehicleUrlOrVin(data, currentVehicleID);
+      } catch {
+        return await ctx.reply(
+          "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+        );
+      }
+      await ctx.reply("Обновлено!");
 
       ctx.session.canBeEditedMessage = await ctx.reply(
         "[место для обновления]",
@@ -159,7 +211,7 @@ export class AddVehicleCommand extends Command {
       "edit_descr_scene",
       async (ctx) => {
         const description = await this.botService.getDescriptionByVehicle(
-          ctx.session.currentVehicleUrl,
+          ctx.session.currentVehicleID,
         );
 
         if (description && description.length > 0) {
@@ -172,6 +224,15 @@ export class AddVehicleCommand extends Command {
       editDescrHandler,
     );
 
-    return [addVehicleScene, editDescScene];
+    const setupUrlVinScene = new Scenes.WizardScene<IBotContext>(
+      "setup_url_vin_scene",
+      async (ctx) => {
+        await ctx.reply("Введите URL или VIN:");
+        return ctx.wizard.next();
+      },
+      setupURLVinHandler,
+    );
+
+    return [addVehicleScene, editDescScene, setupUrlVinScene];
   }
 }

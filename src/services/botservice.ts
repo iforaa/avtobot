@@ -17,13 +17,21 @@ export class BotService {
     return this.vehicleRepository.getUser(userID);
   }
 
-  async addVehicle(vehicleName: string, userID: number): Promise<number> {
-    // Perform any business logic or validation here if needed
-    if (!vehicleName) {
-      throw new Error("Vehicle name is required");
-    }
+  async addVehicleByProvidedData(
+    data: string,
+    userID: number,
+  ): Promise<number> {
+    const urlPattern = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
+    const vinPattern = /^[A-HJ-NPR-Z0-9]{17}$/i;
+    const chassisPattern = /^[A-HJ-NPR-Z0-9]{9,12}$/i;
 
-    return this.vehicleRepository.addVehicle(cleanUrl(vehicleName), userID);
+    if (urlPattern.test(data)) {
+      return this.vehicleRepository.addVehicleByURL(cleanUrl(data), userID);
+    } else if (vinPattern.test(data) || chassisPattern.test(data)) {
+      return this.vehicleRepository.addVehicleByVin(data, userID);
+    } else {
+      throw new TypeError("Incorrect input");
+    }
   }
 
   async getVehiclesByUserId(userId: number): Promise<any[]> {
@@ -31,39 +39,71 @@ export class BotService {
   }
 
   async getVehicleById(vehicleId: number): Promise<any> {
-    return this.vehicleRepository.getVehicleById(vehicleId);
+    return await this.vehicleRepository.getVehicleById(vehicleId);
   }
 
-  async getVehicleByProvidedData(url: string): Promise<any | null> {
-    const vehicle = this.vehicleRepository.getVehicleByURL(cleanUrl(url));
-    if (vehicle) {
-      return vehicle;
+  async editVehicleUrlOrVin(data: string, id: number): Promise<any | null> {
+    const urlPattern = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
+    const vinPattern = /^[A-HJ-NPR-Z0-9]{17}$/i;
+    const chassisPattern = /^[A-HJ-NPR-Z0-9]{9,12}$/i;
+
+    if (urlPattern.test(data)) {
+      await this.vehicleRepository.editVehicleURL(cleanUrl(data), id);
+    } else if (vinPattern.test(data) || chassisPattern.test(data)) {
+      await this.vehicleRepository.editVehicleVIN(data, id);
     } else {
-      return null;
+      throw new TypeError("Incorrect input");
     }
   }
 
-  async getDescriptionByVehicle(url: string): Promise<string | null> {
-    return await this.vehicleRepository.getDescriptionByVehicleUrl(url);
+  async getVehicleByProvidedData(data: string): Promise<any | null> {
+    const urlPattern = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
+    const vinPattern = /^[A-HJ-NPR-Z0-9]{17}$/i;
+    const chassisPattern = /^[A-HJ-NPR-Z0-9]{9,12}$/i;
+
+    if (urlPattern.test(data)) {
+      const vehicle = await this.vehicleRepository.getVehicleByURLOrVin(
+        cleanUrl(data),
+      );
+      if (vehicle) {
+        return vehicle;
+      } else {
+        return null;
+      }
+    } else if (vinPattern.test(data) || chassisPattern.test(data)) {
+      const vehicle = await this.vehicleRepository.getVehicleByURLOrVin(data);
+      if (vehicle) {
+        return vehicle;
+      } else {
+        return null;
+      }
+    } else {
+      throw new TypeError("Incorrect input");
+    }
   }
-  async addDescriptionToVehicle(description: string, url: string) {
-    const newDescription = this.vehicleRepository.addDescriptionToVehicle(
+
+  async getDescriptionByVehicle(id: number): Promise<string | null> {
+    return await this.vehicleRepository.getDescriptionByVehicleID(id);
+  }
+  async addDescriptionToVehicle(description: string, id: number) {
+    const newDescription = await this.vehicleRepository.addDescriptionToVehicle(
       description,
-      url,
+      id,
     );
   }
 
-  async getPhotosOfVehicle(vehicleUrl: string): Promise<string[]> {
-    return await this.vehicleRepository.getPhotosByVehicleUrl(vehicleUrl);
+  async getPhotosOfVehicle(id: number): Promise<string[]> {
+    return await this.vehicleRepository.getPhotosByVehicleID(id);
   }
 
-  async addPhotoToVehicle(filename: string, vehicleUrl: string) {
-    await this.vehicleRepository.addPhotoToVehicle(filename, vehicleUrl);
+  async addPhotoToVehicle(filename: string, id: number) {
+    await this.vehicleRepository.addPhotoToVehicle(filename, id);
   }
 
   async downloadFileFromTelegramAndSaveToDatastore(
     fileLink: URL,
     filename: string,
+    type: string,
   ) {
     try {
       const response = await axios.get(fileLink.toString(), {
@@ -75,6 +115,7 @@ export class BotService {
         const dataStoreFilename = await this.datastoreService.uploadFile(
           photo,
           filename,
+          type,
         );
         return dataStoreFilename;
       } else {

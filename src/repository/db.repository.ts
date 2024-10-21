@@ -16,11 +16,17 @@ export class DBRepository {
     return result;
   }
 
-  async addVehicle(url: string, userID: number): Promise<number> {
+  async addVehicleByURL(url: string, userID: number): Promise<number> {
     const query =
       "INSERT INTO vehicles (url, user_id) VALUES ($1, $2) RETURNING id";
     const result = await this.dbService.query(query, [url, userID]);
-    return result.id;
+    return result[0].id;
+  }
+  async addVehicleByVin(vin: string, userID: number): Promise<number> {
+    const query =
+      "INSERT INTO vehicles (vin, user_id) VALUES ($1, $2) RETURNING id";
+    const result = await this.dbService.query(query, [vin, userID]);
+    return result[0].id;
   }
 
   async getVehiclesByUserId(userId: number): Promise<any[]> {
@@ -32,14 +38,14 @@ export class DBRepository {
   async getVehicleById(vehicleId: number): Promise<any> {
     const query = "SELECT * FROM vehicles WHERE id = $1";
     const result = await this.dbService.query(query, [vehicleId]);
-    return result.rows[0];
+    return result[0];
   }
 
-  async getDescriptionByVehicleUrl(url: string): Promise<string | null> {
-    const query = "SELECT description FROM vehicles WHERE url = $1";
+  async getDescriptionByVehicleID(id: number): Promise<string | null> {
+    const query = "SELECT description FROM vehicles WHERE id = $1";
 
     try {
-      const result = await this.dbService.query(query, [url]);
+      const result = await this.dbService.query(query, [id]);
 
       // Check if the vehicle was found
       if (result.length > 0) {
@@ -53,14 +59,11 @@ export class DBRepository {
     }
   }
 
-  async addDescriptionToVehicle(
-    description: string,
-    url: string,
-  ): Promise<any> {
+  async addDescriptionToVehicle(description: string, id: number): Promise<any> {
     const query =
-      "UPDATE vehicles SET description = $1 WHERE url = $2 RETURNING *";
+      "UPDATE vehicles SET description = $1 WHERE id = $2 RETURNING *";
     try {
-      const result = await this.dbService.query(query, [description, url]);
+      const result = await this.dbService.query(query, [description, id]);
 
       // Check if the vehicle was found and updated
       if (result.length > 0) {
@@ -74,16 +77,16 @@ export class DBRepository {
     }
   }
 
-  async getPhotosByVehicleUrl(vehicleUrl: string): Promise<string[]> {
+  async getPhotosByVehicleID(id: number): Promise<string[]> {
     const query = `
       SELECT p.photo_url
       FROM photos p
       JOIN vehicles v ON p.vehicle_id = v.id
-      WHERE v.url = $1;
+      WHERE v.id = $1;
     `;
 
     try {
-      const result = await this.dbService.query(query, [vehicleUrl]);
+      const result = await this.dbService.query(query, [id]);
 
       if (result.length > 0) {
         // Extract photo URLs from the query result
@@ -97,18 +100,15 @@ export class DBRepository {
     }
   }
 
-  async addPhotoToVehicle(filename: string, vehicleUrl: string): Promise<any> {
+  async addPhotoToVehicle(filename: string, id: number): Promise<any> {
     const query = `
-      WITH vehicle AS (
-        SELECT id FROM vehicles WHERE url = $1
-      )
       INSERT INTO photos (vehicle_id, photo_url)
-      VALUES ((SELECT id FROM vehicle), $2)
+      VALUES ($1, $2)
       RETURNING *;
     `;
 
     try {
-      const result = await this.dbService.query(query, [vehicleUrl, filename]);
+      const result = await this.dbService.query(query, [id, filename]);
 
       if (result.length > 0) {
         return result[0]; // Return the inserted photo record
@@ -124,6 +124,60 @@ export class DBRepository {
   async getVehicleByURL(url: string): Promise<any> {
     const query = "SELECT * FROM vehicles WHERE url = $1";
     const result = await this.dbService.query(query, [url]);
+
+    if (result === null) {
+      console.error("Failed to fetch vehicle from database.");
+      return null;
+    }
+
+    console.log(result);
+
+    if (result.length > 0) {
+      return result[0];
+    } else {
+      return null;
+    }
+  }
+
+  async editVehicleURL(newUrl: string, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET url = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [newUrl, id]);
+
+      if (result === null || result.length === 0) {
+        console.error("Failed to update vehicle URL. Vehicle ID not found.");
+        return null;
+      }
+
+      console.log("Vehicle URL updated:", result[0]);
+      return result[0]; // Return the updated vehicle
+    } catch (error) {
+      console.error("Error updating vehicle URL:", error);
+      throw new Error("Error updating vehicle URL");
+    }
+  }
+
+  async editVehicleVIN(newVin: string, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET vin = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [newVin, id]);
+
+      if (result === null || result.length === 0) {
+        console.error("Failed to update vehicle VIN. Vehicle ID not found.");
+        return null;
+      }
+
+      console.log("Vehicle VIN updated:", result[0]);
+      return result[0]; // Return the updated vehicle
+    } catch (error) {
+      console.error("Error updating vehicle VIN:", error);
+      throw new Error("Error updating vehicle VIN");
+    }
+  }
+
+  async getVehicleByURLOrVin(data: string): Promise<any> {
+    const query = "SELECT * FROM vehicles WHERE url = $1 OR vin = $1";
+    const result = await this.dbService.query(query, [data]);
 
     if (result === null) {
       console.error("Failed to fetch vehicle from database.");

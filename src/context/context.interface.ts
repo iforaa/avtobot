@@ -4,7 +4,8 @@ import { SessionContext } from "telegraf/typings/session";
 
 export interface SessionData extends Scenes.WizardSession<WizardSession> {
   passedValidation: boolean;
-  currentVehicleUrl: string;
+  // currentVehicleUrl: string;
+  currentVehicleID: number;
   vehicles: any[];
   canBeEditedMessage?: any;
   mediaGroupMessage?: any;
