@@ -9,6 +9,7 @@ export interface SessionData extends Scenes.WizardSession<WizardSession> {
   vehicles: any[];
   canBeEditedMessage?: any;
   mediaGroupMessage?: any;
+  anyMessagesToDelete: any[];
 }
 
 interface WizardSession extends Scenes.WizardSessionData {

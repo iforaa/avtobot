@@ -29,6 +29,10 @@ export class AddVehicleCommand extends Command {
         for (const message of ctx.session.mediaGroupMessage) {
           await ctx.deleteMessage(message.message_id);
         }
+        for (const message of ctx.session.anyMessagesToDelete) {
+          await ctx.deleteMessage(message.message_id);
+        }
+        ctx.session.anyMessagesToDelete = [];
       } catch {}
       ctx.scene.enter("add_vehicle_scene");
     });
@@ -43,24 +47,37 @@ export class AddVehicleCommand extends Command {
       const photos = await this.botService.getPhotosOfVehicle(vehicleID);
 
       if (photos.length > 0) {
-        const mediaGroup: MediaGroup = photos.slice(0, 10).map((photo) => {
-          const type = photo.includes("photos/") ? "photo" : "video";
-          let media = photo.includes("photos/")
-            ? photo.replace(
-                "photos/",
-                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
-              )
-            : photo.replace(
-                "videos/",
-                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
-              );
-          media += "/";
-          media += type;
-          return {
-            type: type,
-            media: media,
-          };
-        });
+        const mediaGroup: MediaGroup = photos
+          .filter((photo) => photo.includes("photos/"))
+          .slice(0, 10)
+          .map((photo) => {
+            let media = photo.replace(
+              "photos/",
+              "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+            );
+            media += "/";
+            media += "photo";
+            return {
+              type: "photo",
+              media: media,
+            };
+          });
+
+        const videos = photos
+          .filter((photo) => photo.includes("videos/"))
+          .slice(0, 10)
+          .map((photo) => {
+            let media = photo.replace(
+              "videos/",
+              "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+            );
+            media += "/";
+            media += "video";
+            return {
+              type: "video",
+              media: media,
+            };
+          });
 
         // Send the photos as an album
         try {
@@ -69,6 +86,13 @@ export class AddVehicleCommand extends Command {
             ctx.chat!.id,
             mediaGroup,
           );
+          ctx.session.anyMessagesToDelete = [];
+          for (const video of videos) {
+            const videoMsg = await ctx.reply(video.media);
+            if (ctx.session.anyMessagesToDelete) {
+              ctx.session.anyMessagesToDelete.push(videoMsg);
+            }
+          }
           ctx.session.canBeEditedMessage = await ctx.reply("✅ Доставлено!", {
             reply_markup: {
               inline_keyboard: [

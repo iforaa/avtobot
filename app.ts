@@ -19,7 +19,11 @@ class Bot {
   private botService: BotService;
 
   constructor(private readonly configService: IConfigService) {
-    this.bot = new Telegraf<IBotContext>(this.configService.get("TOKEN"));
+    this.bot = new Telegraf<IBotContext>(this.configService.get("TOKEN"), {
+      telegram: {
+        apiRoot: "http://localhost:8081",
+      },
+    });
     this.bot.use(new LocalSession({ database: "sessions.json" }).middleware());
     this.bot.use(async (ctx, next) => {
       ctx.replyOrEditMessage = async (

@@ -18,12 +18,6 @@ export class AddPhotoCommand extends Command {
       ctx.scene.enter("add_photo_scene"),
     );
 
-    this.bot.action("add_another_photo", async (ctx) => {
-      await ctx.scene.leave();
-      await ctx.reply("Шли еще");
-      return await ctx.scene.enter("add_photo_scene");
-    });
-
     this.bot.action("go_to_add_vehicle_scene", async (ctx) => {
       await ctx.scene.leave();
       return await ctx.scene.enter("add_vehicle_scene");

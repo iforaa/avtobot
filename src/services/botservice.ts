@@ -106,12 +106,13 @@ export class BotService {
     type: string,
   ) {
     try {
-      const response = await axios.get(fileLink.toString(), {
-        responseType: "arraybuffer",
-      });
+      if (fileLink.toString().startsWith("file://")) {
+        // Remove the 'file://' and 'localhost' from the URL, and extract the local path
+        const filePath = fileLink.pathname;
 
-      if (response.status === 200) {
-        const photo = Buffer.from(response.data);
+        // On macOS (Darwin), the filePath will start with '/', which is correct for fs
+        const fs = require("fs").promises;
+        const photo = await fs.readFile(filePath); // Read the file directly from the disk
         const dataStoreFilename = await this.datastoreService.uploadFile(
           photo,
           filename,
@@ -119,7 +120,21 @@ export class BotService {
         );
         return dataStoreFilename;
       } else {
-        throw new Error(`Failed to download file: ${response.statusText}`);
+        const response = await axios.get(fileLink.toString(), {
+          responseType: "arraybuffer",
+        });
+
+        if (response.status === 200) {
+          const photo = Buffer.from(response.data);
+          const dataStoreFilename = await this.datastoreService.uploadFile(
+            photo,
+            filename,
+            type,
+          );
+          return dataStoreFilename;
+        } else {
+          throw new Error(`Failed to download file: ${response.statusText}`);
+        }
       }
     } catch (error) {
       throw new Error(`Error downloading file: ${error}`);
