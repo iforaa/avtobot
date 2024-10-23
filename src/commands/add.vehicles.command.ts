@@ -26,8 +26,10 @@ export class AddVehicleCommand extends Command {
     //
     this.bot.action("go_back_from_view_photos", async (ctx) => {
       try {
-        for (const message of ctx.session.mediaGroupMessage) {
-          await ctx.deleteMessage(message.message_id);
+        for (const group of ctx.session.mediaGroupsMessage) {
+          for (const message of group) {
+            await ctx.deleteMessage(message.message_id);
+          }
         }
         for (const message of ctx.session.anyMessagesToDelete) {
           await ctx.deleteMessage(message.message_id);
@@ -39,6 +41,7 @@ export class AddVehicleCommand extends Command {
 
     this.bot.action("view_vehicle_photos", async (ctx) => {
       const vehicleID = ctx.session.currentVehicleID;
+      ctx.session.mediaGroupsMessage = [];
 
       if (!vehicleID) {
         await ctx.reply("Пожалуйста, выберите авто.");
@@ -76,7 +79,9 @@ export class AddVehicleCommand extends Command {
               };
             });
 
-            await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup);
+            ctx.session.mediaGroupsMessage.push(
+              await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup),
+            );
           }
         };
 
@@ -106,7 +111,9 @@ export class AddVehicleCommand extends Command {
 
           // Send the video links as a text message
           if (videoMessage) {
-            await ctx.reply(videoMessage, { parse_mode: "HTML" });
+            ctx.session.anyMessagesToDelete.push(
+              await ctx.reply(videoMessage, { parse_mode: "HTML" }),
+            );
           }
 
           ctx.session.canBeEditedMessage = await ctx.reply("✅ Доставлено!", {
