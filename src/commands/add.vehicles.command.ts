@@ -44,55 +44,71 @@ export class AddVehicleCommand extends Command {
         await ctx.reply("Пожалуйста, выберите авто.");
         return;
       }
+
       const photos = await this.botService.getPhotosOfVehicle(vehicleID);
 
-      if (photos.length > 0) {
-        const mediaGroup: MediaGroup = photos
-          .filter((photo) => photo.includes("photos/"))
-          .slice(0, 10)
-          .map((photo) => {
-            let media = photo.replace(
-              "photos/",
-              "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
-            );
-            media += "/";
-            media += "photo";
-            return {
-              type: "photo",
-              media: media,
-            };
-          });
+      const chunkArray = (array: any[], chunkSize: number) => {
+        const result = [];
+        for (let i = 0; i < array.length; i += chunkSize) {
+          result.push(array.slice(i, i + chunkSize));
+        }
+        return result;
+      };
 
-        const videos = photos
+      if (photos.length > 0) {
+        const sendMediaGroups = async (ctx: any, photos: string[]) => {
+          const mediaChunks = chunkArray(
+            photos.filter((photo) => photo.includes("photos/")),
+            10,
+          );
+
+          for (const chunk of mediaChunks) {
+            const mediaGroup: MediaGroup = chunk.map((photo) => {
+              let media = photo.replace(
+                "photos/",
+                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+              );
+              media += "/";
+              media += "photo";
+              return {
+                type: "photo",
+                media: media,
+              };
+            });
+
+            await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup);
+          }
+        };
+
+        // Handling video URLs
+        const videoUrls = photos
           .filter((photo) => photo.includes("videos/"))
-          .slice(0, 10)
-          .map((photo) => {
-            let media = photo.replace(
+          .map((video, index) => {
+            let url = video.replace(
               "videos/",
               "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
             );
-            media += "/";
-            media += "video";
-            return {
-              type: "video",
-              media: media,
-            };
+            url += "/";
+            url += "video";
+            return `<a href="${url}">Смотреть видео ${index + 1}</a>`;
           });
 
-        // Send the photos as an album
+        // Create a message with numbered video links
+        const videoMessage =
+          videoUrls.length > 0 ? "📹 Видео:\n" + videoUrls.join("\n") : "";
+
         try {
           await ctx.deleteMessage();
-          ctx.session.mediaGroupMessage = await ctx.telegram.sendMediaGroup(
-            ctx.chat!.id,
-            mediaGroup,
-          );
           ctx.session.anyMessagesToDelete = [];
-          for (const video of videos) {
-            const videoMsg = await ctx.reply(video.media);
-            if (ctx.session.anyMessagesToDelete) {
-              ctx.session.anyMessagesToDelete.push(videoMsg);
-            }
+
+          // Send photo albums
+          await sendMediaGroups(ctx, photos);
+
+          // Send the video links as a text message
+          if (videoMessage) {
+            await ctx.reply(videoMessage, { parse_mode: "HTML" });
           }
+
           ctx.session.canBeEditedMessage = await ctx.reply("✅ Доставлено!", {
             reply_markup: {
               inline_keyboard: [
