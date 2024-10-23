@@ -150,10 +150,13 @@ export class StartCommand extends Command {
       const userId = ctx.from!.id; // Access the user's Telegram ID
       const vehicles: any[] = await this.botService.getVehiclesByUserId(userId);
       ctx.session.vehicles = vehicles;
-      // ctx.session.currentPage = 0; // Start at the first page
 
       const pageSize = 5; // Number of vehicles per page
       const currentPage = ctx.session.currentPage || 0; // Default to the first page
+      if (!ctx.session.currentPage) {
+        ctx.session.currentPage = 0;
+      }
+
       const totalPages = Math.ceil(vehicles.length / pageSize);
 
       if (vehicles.length > 0) {
