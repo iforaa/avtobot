@@ -7,6 +7,7 @@ export interface SessionData extends Scenes.WizardSession<WizardSession> {
   // currentVehicleUrl: string;
   currentPage: number;
   currentVehicleID: number;
+  currentPhotoIndex: number;
   vehicles: any[];
   canBeEditedMessage?: any;
   mediaGroupsMessage: any[];
@@ -19,6 +20,12 @@ interface WizardSession extends Scenes.WizardSessionData {
 
 export interface IBotContext extends Context {
   replyOrEditMessage: (text: string, keyboardOptions: object) => Promise<any>;
+  replyOrEditPhoto: (
+    photoUrl: string,
+    caption: string,
+    keyboardOptions: object,
+  ) => Promise<any>;
+
   session: SessionData;
   scene: Scenes.SceneContextScene<IBotContext, Scenes.WizardSessionData>;
   wizard: Scenes.WizardContextWizard<IBotContext>;

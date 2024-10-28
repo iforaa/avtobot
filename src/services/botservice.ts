@@ -82,6 +82,14 @@ export class BotService {
     }
   }
 
+  async deletePhoto(vehicleID: number, photoName: string) {
+    const type = photoName.startsWith("photos/") ? "photo" : "video";
+
+    await this.datastoreService.deleteFile(photoName, type);
+
+    return await this.vehicleRepository.deletePhotoByURL(vehicleID, photoName);
+  }
+
   async getDescriptionByVehicle(id: number): Promise<string | null> {
     return await this.vehicleRepository.getDescriptionByVehicleID(id);
   }
@@ -90,6 +98,10 @@ export class BotService {
       description,
       id,
     );
+  }
+
+  async addRemoteReportLinkToVehicle(remoteLink: string, id: number) {
+    await this.vehicleRepository.addRemoteReportLinkToVehicle(remoteLink, id);
   }
 
   async getPhotosOfVehicle(id: number): Promise<string[]> {

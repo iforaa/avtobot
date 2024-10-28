@@ -5,6 +5,8 @@ import { cleanUrl } from "../utils/cleanurl";
 import { BotService } from "../services/botservice";
 import { WizardContext } from "telegraf/typings/scenes";
 import { MediaGroup } from "telegraf/typings/telegram-types";
+import { constructLinkForVehicle } from "../utils/parseUrlDetails";
+import { dateFormatter } from "../utils/dateFormatter";
 
 export class AddVehicleCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
@@ -13,6 +15,10 @@ export class AddVehicleCommand extends Command {
 
   handle(): void {
     this.bot.action("edit_info", (ctx) => ctx.scene.enter("edit_descr_scene"));
+    this.bot.action("attach_remote_report", (ctx) =>
+      ctx.scene.enter("attach_remote_report_scene"),
+    );
+
     this.bot.action("setup_url_vin", (ctx) =>
       ctx.scene.enter("setup_url_vin_scene"),
     );
@@ -20,10 +26,21 @@ export class AddVehicleCommand extends Command {
     this.bot.action("go_to_start_scene", (ctx) =>
       ctx.scene.enter("start_scene"),
     );
-    // this.bot.action("edit_photo", async (ctx) => {
+    this.bot.action("edit_content", async (ctx) => {
+      try {
+        for (const group of ctx.session.mediaGroupsMessage) {
+          for (const message of group) {
+            await ctx.deleteMessage(message.message_id);
+          }
+        }
+        for (const message of ctx.session.anyMessagesToDelete) {
+          await ctx.deleteMessage(message.message_id);
+        }
+        ctx.session.anyMessagesToDelete = [];
+      } catch {}
+      ctx.scene.enter("edit_content_scene");
+    });
 
-    // });
-    //
     this.bot.action("go_back_from_view_photos", async (ctx) => {
       try {
         for (const group of ctx.session.mediaGroupsMessage) {
@@ -125,8 +142,8 @@ export class AddVehicleCommand extends Command {
                     callback_data: "go_back_from_view_photos",
                   },
                   {
-                    text: "Редактировать фото",
-                    callback_data: "edit_photo",
+                    text: "Редактировать",
+                    callback_data: "edit_content",
                   },
                 ],
               ],
@@ -145,6 +162,7 @@ export class AddVehicleCommand extends Command {
   scenes(): Scenes.WizardScene<IBotContext>[] {
     const addVehicleHandler = new Composer<IBotContext>();
     const editDescrHandler = new Composer<IBotContext>();
+    const attachRemoteReportHandler = new Composer<IBotContext>();
     const setupURLVinHandler = new Composer<IBotContext>();
 
     const addVehicleScene = new Scenes.WizardScene<IBotContext>(
@@ -157,25 +175,17 @@ export class AddVehicleCommand extends Command {
         );
 
         const vehicleDesc = vehicle.description;
-        let message = "";
-        if (vehicle.url) {
-          message = `Ссылка: ${vehicle.url}\n\n`;
-        } else {
-          message = `Ссылка не установлена\n\n`;
-        }
-
-        if (vehicle.vin) {
-          message += `VIN: ${vehicle.vin}\n\n`;
-        } else {
-          message += "VIN номер не прописан.\n\n";
-        }
-
+        let message = constructLinkForVehicle(vehicle);
+        message += `  <i>Добавлено ${dateFormatter(vehicle.created_at)}</i>\n\n`;
         if (vehicleDesc) {
           message += `Описание:\n${vehicleDesc}\n\n`;
         } else {
           message += "Описание отсутствует.\n\n";
         }
 
+        if (vehicle.remote_report_link) {
+          message += `Отчет: \n${vehicle.remote_report_link}\n\n`;
+        }
         // const photoLinks = vehicleData ? vehicleData.match(/Photo: .*/g) : [];
         // const photoCount = photoLinks ? photoLinks.length : 0;
 
@@ -204,10 +214,18 @@ export class AddVehicleCommand extends Command {
                     callback_data: "setup_url_vin",
                   },
                 ],
+                [
+                  {
+                    text: "Прикрепить внешний отчет",
+                    callback_data: "attach_remote_report",
+                  },
+                ],
 
                 [{ text: "Назад", callback_data: "go_to_start_scene" }],
               ],
             },
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
           },
         );
         ctx.scene.leave();
@@ -254,6 +272,24 @@ export class AddVehicleCommand extends Command {
       ctx.wizard.cursor = 1;
     });
 
+    attachRemoteReportHandler.on("text", async (ctx) => {
+      const reportLink = ctx.message.text;
+      const currentVehicleID = ctx.session.currentVehicleID;
+      this.botService.addRemoteReportLinkToVehicle(
+        reportLink || "",
+        currentVehicleID,
+      );
+      await ctx.reply("Внишний отчет прикреплен!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+
     const editDescScene = new Scenes.WizardScene<IBotContext>(
       "edit_descr_scene",
       async (ctx) => {
@@ -271,6 +307,15 @@ export class AddVehicleCommand extends Command {
       editDescrHandler,
     );
 
+    const attachRemoteReportScene = new Scenes.WizardScene<IBotContext>(
+      "attach_remote_report_scene",
+      async (ctx) => {
+        await ctx.reply("Присылай ссылку на отчет:");
+        return ctx.wizard.next();
+      },
+      attachRemoteReportHandler,
+    );
+
     const setupUrlVinScene = new Scenes.WizardScene<IBotContext>(
       "setup_url_vin_scene",
       async (ctx) => {
@@ -280,6 +325,11 @@ export class AddVehicleCommand extends Command {
       setupURLVinHandler,
     );
 
-    return [addVehicleScene, editDescScene, setupUrlVinScene];
+    return [
+      addVehicleScene,
+      editDescScene,
+      setupUrlVinScene,
+      attachRemoteReportScene,
+    ];
   }
 }

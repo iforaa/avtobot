@@ -57,7 +57,7 @@ export class AddPhotoCommand extends Command {
     const addPhotoScene = new Scenes.WizardScene<IBotContext>(
       "add_photo_scene",
       async (ctx) => {
-        await ctx.reply("Присылай фото или видео, но не более 10 штук");
+        await ctx.reply("Присылай фото или видео");
         return ctx.wizard.next();
       },
       addPhotoDescrHandler,

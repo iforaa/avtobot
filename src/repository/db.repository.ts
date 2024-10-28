@@ -58,7 +58,26 @@ export class DBRepository {
       throw error;
     }
   }
+  async addRemoteReportLinkToVehicle(
+    remoteLink: string,
+    id: number,
+  ): Promise<any> {
+    const query =
+      "UPDATE vehicles SET remote_report_link = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [remoteLink, id]);
 
+      // Check if the vehicle was found and updated
+      if (result.length > 0) {
+        return result[0]; // Return the updated vehicle
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
   async addDescriptionToVehicle(description: string, id: number): Promise<any> {
     const query =
       "UPDATE vehicles SET description = $1 WHERE id = $2 RETURNING *";
@@ -73,6 +92,28 @@ export class DBRepository {
       }
     } catch (error) {
       console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
+
+  async deletePhotoByURL(vehicleID: number, photoURL: string): Promise<void> {
+    const query = `
+        DELETE FROM photos
+        WHERE vehicle_id = $1 AND photo_url = $2;
+      `;
+
+    try {
+      const result = await this.dbService.query(query, [vehicleID, photoURL]);
+
+      if (result.rowCount === 0) {
+        console.warn(
+          "No photo found to delete with the specified URL and vehicle ID.",
+        );
+      } else {
+        console.log("Photo deleted successfully.");
+      }
+    } catch (error) {
+      console.error("Error deleting photo for vehicle:", error);
       throw error;
     }
   }

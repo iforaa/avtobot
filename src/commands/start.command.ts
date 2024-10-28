@@ -6,6 +6,8 @@ import { WizardContext } from "telegraf/typings/scenes";
 import { Scenes } from "telegraf";
 import { cleanUrl } from "../utils/cleanurl";
 import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
+import { constructLinkForVehicle } from "../utils/parseUrlDetails";
+import { dateFormatter } from "../utils/dateFormatter";
 
 export class StartCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
@@ -184,23 +186,9 @@ export class StartCommand extends Command {
           const vehicleUrl = vehicle.url;
           const vehicleIndex = start + index; // Overall index of the vehicle
 
-          // Use emojis for numbering and append vehicle URL
-          if (vehicleUrl) {
-            const carDetails = this.parseCarDetails(vehicleUrl);
-
-            // Show the number emoji regardless of parsing success
-            message += `${numberEmojis[index] || index + 1} `;
-
-            // Append car details if parsing was successful, otherwise show a placeholder
-            if (carDetails) {
-              message += `<a href="${vehicleUrl}"><b>${carDetails.brand} ${carDetails.model}</b>\n${carDetails.year}</a>\n\n`;
-            } else {
-              message += `<a href="${vehicleUrl}">Ссылка</a>\n\n`; // Placeholder text with URL
-            }
-          } else if (vehicle.vin) {
-            message += `${numberEmojis[index] || index + 1} `;
-            message += `${vehicle.vin}\n\n`; // Placeholder text with URL
-          }
+          message += `${numberEmojis[index] || index + 1} `;
+          message += constructLinkForVehicle(vehicle);
+          message += `  <i>Добавлено ${dateFormatter(vehicle.created_at)}</i>\n\n`;
 
           if (inlineKeyboard[inlineKeyboard.length - 1].length === 5) {
             inlineKeyboard.push([]); // Start a new row
@@ -244,6 +232,7 @@ export class StartCommand extends Command {
             inline_keyboard: inlineKeyboard,
           },
           parse_mode: "HTML",
+          disable_web_page_preview: true,
         });
       } else {
         // Handle the case when no vehicles are available
@@ -266,36 +255,5 @@ export class StartCommand extends Command {
     );
 
     return [startScene, viewVehiclesScene];
-  }
-
-  parseCarDetails(url: string) {
-    try {
-      const urlParts = url.split("/");
-
-      // Extract the relevant part of the URL that contains the details
-      const carDetailsPart = urlParts[5]; // This part contains brand_model_year
-
-      // Split the car details part by underscores
-      const carDetails = carDetailsPart.split("_");
-
-      // Extract the brand, model (multiple parts), and year
-      const brand = this.capitalizeWords(carDetails[0]);
-      const model = this.capitalizeWords(carDetails.slice(1, -2).join(" ")); // Everything except the year and engine details
-      const year = carDetails[carDetails.length - 2];
-
-      return {
-        brand,
-        model,
-        year,
-      };
-    } catch (error) {
-      return null;
-    }
-  }
-  capitalizeWords(str: string) {
-    return str
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
   }
 }

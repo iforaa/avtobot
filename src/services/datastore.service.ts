@@ -54,4 +54,24 @@ export class DatastoreService {
       throw new Error(`Error downloading file: ${error}`);
     }
   }
+
+  async deleteFile(fileKey: string, type: "photo" | "video"): Promise<void> {
+    try {
+      const fileKey_ = fileKey.replace("photos/", "").replace("videos/", "");
+
+      console.log(`LINK: ${this.datastoreURL}/delete/${fileKey_}/${type}`);
+      const response = await axios.delete(
+        `${this.datastoreURL}/delete/${fileKey_}/${type}`,
+      );
+
+      if (response.status === 200) {
+        console.log("File deleted successfully.");
+      } else {
+        throw new Error(`Failed to delete file: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting file: ${error}`);
+      throw new Error(`Error deleting file: ${error}`);
+    }
+  }
 }

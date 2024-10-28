@@ -12,6 +12,7 @@ import { BotService } from "./src/services/botservice";
 import { DbService } from "./src/services/db.service";
 import { AddPhotoCommand } from "./src/commands/add.photos.command";
 import { DatastoreService } from "./src/services/datastore.service";
+import { EditContentCommand } from "./src/commands/edit.content.command";
 
 class Bot {
   bot: Telegraf<IBotContext>;
@@ -58,6 +59,47 @@ class Bot {
         return;
       };
 
+      ctx.replyOrEditPhoto = async (
+        photoUrl: string,
+        caption: string,
+        keyboardOptions: object,
+      ) => {
+        if (
+          ctx.session.canBeEditedMessage !== null &&
+          ctx.session.canBeEditedMessage !== undefined
+        ) {
+          try {
+            ctx.session.canBeEditedMessage =
+              await ctx.telegram.editMessageMedia(
+                ctx.session.canBeEditedMessage.chat.id,
+                ctx.session.canBeEditedMessage.message_id,
+                undefined,
+                {
+                  type: "photo",
+                  media: photoUrl,
+                  caption: caption,
+                },
+                keyboardOptions,
+              );
+          } catch (error) {
+            console.log(error);
+            ctx.session.canBeEditedMessage = await ctx.replyWithPhoto(
+              photoUrl,
+              {
+                caption: caption,
+                ...keyboardOptions,
+              },
+            );
+          }
+        } else {
+          ctx.session.canBeEditedMessage = await ctx.replyWithPhoto(photoUrl, {
+            caption: caption,
+            ...keyboardOptions,
+          });
+        }
+        return;
+      };
+
       return next();
     });
 
@@ -72,6 +114,7 @@ class Bot {
       new StartCommand(this.bot, this.botService),
       new AddVehicleCommand(this.bot, this.botService),
       new AddPhotoCommand(this.bot, this.botService),
+      new EditContentCommand(this.bot, this.botService),
     ];
 
     const scenes: Scenes.WizardScene<IBotContext>[] = [];
