@@ -1,4 +1,5 @@
 import { DbService } from "../services/db.service";
+import { parseURLDetails } from "../utils/parseUrlDetails";
 
 export class DBRepository {
   constructor(private readonly dbService: DbService) {}
@@ -17,11 +18,27 @@ export class DBRepository {
   }
 
   async addVehicleByURL(url: string, userID: number): Promise<number> {
-    const query =
-      "INSERT INTO vehicles (url, user_id) VALUES ($1, $2) RETURNING id";
-    const result = await this.dbService.query(query, [url, userID]);
+    const carDetails = parseURLDetails(url);
+
+    // Set default values if brand or model is null
+    const brand = carDetails?.brand || "н/д";
+    const model = carDetails?.model || "н/д";
+
+    const query = `
+        INSERT INTO vehicles (url, user_id, mark, model)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+      `;
+
+    const result = await this.dbService.query(query, [
+      url,
+      userID,
+      brand,
+      model,
+    ]);
     return result[0].id;
   }
+
   async addVehicleByVin(vin: string, userID: number): Promise<number> {
     const query =
       "INSERT INTO vehicles (vin, user_id) VALUES ($1, $2) RETURNING id";
@@ -30,7 +47,8 @@ export class DBRepository {
   }
 
   async getVehiclesByUserId(userId: number): Promise<any[]> {
-    const query = "SELECT * FROM vehicles WHERE user_id = $1";
+    const query =
+      "SELECT * FROM vehicles WHERE user_id = $1 ORDER BY created_at DESC";
     const result = await this.dbService.query(query, [userId]);
     return result;
   }
@@ -39,6 +57,42 @@ export class DBRepository {
     const query = "SELECT * FROM vehicles WHERE id = $1";
     const result = await this.dbService.query(query, [vehicleId]);
     return result[0];
+  }
+
+  async getModelByVehicleID(id: number): Promise<string | null> {
+    const query = "SELECT model FROM vehicles WHERE id = $1";
+
+    try {
+      const result = await this.dbService.query(query, [id]);
+
+      // Check if the vehicle was found
+      if (result.length > 0) {
+        return result[0].model; // Return the description
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error retrieving vehicle description:", error);
+      throw error;
+    }
+  }
+
+  async getMarkByVehicleID(id: number): Promise<string | null> {
+    const query = "SELECT mark FROM vehicles WHERE id = $1";
+
+    try {
+      const result = await this.dbService.query(query, [id]);
+
+      // Check if the vehicle was found
+      if (result.length > 0) {
+        return result[0].mark; // Return the description
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error retrieving vehicle description:", error);
+      throw error;
+    }
   }
 
   async getDescriptionByVehicleID(id: number): Promise<string | null> {
@@ -78,6 +132,41 @@ export class DBRepository {
       throw error;
     }
   }
+
+  async addMarkToVehicle(mark: string, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET mark = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [mark, id]);
+
+      // Check if the vehicle was found and updated
+      if (result.length > 0) {
+        return result[0]; // Return the updated vehicle
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
+
+  async addModelToVehicle(model: string, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET model = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [model, id]);
+
+      // Check if the vehicle was found and updated
+      if (result.length > 0) {
+        return result[0]; // Return the updated vehicle
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
+
   async addDescriptionToVehicle(description: string, id: number): Promise<any> {
     const query =
       "UPDATE vehicles SET description = $1 WHERE id = $2 RETURNING *";

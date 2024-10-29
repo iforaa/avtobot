@@ -13,6 +13,7 @@ import { DbService } from "./src/services/db.service";
 import { AddPhotoCommand } from "./src/commands/add.photos.command";
 import { DatastoreService } from "./src/services/datastore.service";
 import { EditContentCommand } from "./src/commands/edit.content.command";
+import { SearchCarsCommand } from "./src/commands/search.cars.command";
 
 class Bot {
   bot: Telegraf<IBotContext>;
@@ -115,6 +116,7 @@ class Bot {
       new AddVehicleCommand(this.bot, this.botService),
       new AddPhotoCommand(this.bot, this.botService),
       new EditContentCommand(this.bot, this.botService),
+      new SearchCarsCommand(this.bot, this.botService),
     ];
 
     const scenes: Scenes.WizardScene<IBotContext>[] = [];

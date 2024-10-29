@@ -9,6 +9,11 @@ import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 
+let ADD_CAR_MENU = "Добавить авто";
+let ALL_CARS_MENU = "Все авто";
+
+let CLOSE_MENU = "❌ Закрыть";
+
 export class StartCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
     super(bot, botService);
@@ -50,11 +55,24 @@ export class StartCommand extends Command {
       return ctx.scene.enter("start_scene");
     });
 
-    this.bot.action("add_vehicle", async (ctx) => {});
-    this.bot.action("my_vehicles", async (ctx) => {
+    this.bot.hears(ADD_CAR_MENU, async (ctx) => {
       ctx.scene.leave();
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      return ctx.scene.enter("adding_car_scene");
+    });
+    this.bot.hears(ALL_CARS_MENU, async (ctx) => {
+      ctx.scene.leave();
+      try {
+        ctx.deleteMessage();
+      } catch {}
       return ctx.scene.enter("my_vehicles_scene");
     });
+    // this.bot.action("my_vehicles", async (ctx) => {
+    //   ctx.scene.leave();
+    //   return ctx.scene.enter("my_vehicles_scene");
+    // });
 
     this.bot.action("previous_vehicles_page", async (ctx) => {
       if (ctx.session.currentPage > 0) {
@@ -63,12 +81,23 @@ export class StartCommand extends Command {
       }
     });
 
+    this.bot.action("search_cars", async (ctx) => {
+      ctx.scene.leave();
+      return ctx.scene.enter("search_cars_scene");
+    });
+
     this.bot.action("next_vehicles_page", async (ctx) => {
       const totalPages = Math.ceil(ctx.session.vehicles.length / 5); // 10 vehicles per page
       if (ctx.session.currentPage < totalPages - 1) {
         ctx.session.currentPage += 1;
         return ctx.scene.enter("my_vehicles_scene");
       }
+    });
+
+    this.bot.action("delete_vehicles_scene", async (ctx) => {
+      try {
+        ctx.deleteMessage();
+      } catch {}
     });
 
     this.bot.action(/open_vehicle_(\d+)/, async (ctx) => {
@@ -87,9 +116,26 @@ export class StartCommand extends Command {
 
   scenes(): Scenes.WizardScene<IBotContext>[] {
     const addVehicleHandler = new Composer<IBotContext>();
-
-    addVehicleHandler.action("add_vehicle", async (ctx) => {
-      await ctx.reply("Введи URL из объявления или VIN номер:");
+    addVehicleHandler.action("close_adding_vehicle_scene", async (ctx) => {
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      ctx.scene.leave();
+      return ctx.scene.enter("start_scene");
+    });
+    addVehicleHandler.hears(ADD_CAR_MENU, async (ctx) => {
+      await ctx.reply("Введи URL из объявления или VIN номер:", {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: CLOSE_MENU,
+                callback_data: "close_adding_vehicle_scene",
+              },
+            ],
+          ],
+        },
+      });
 
       addVehicleHandler.on("text", async (ctx) => {
         const inputText = ctx.message?.text;
@@ -125,28 +171,33 @@ export class StartCommand extends Command {
       });
     });
 
+    const addingCarScene = new Scenes.WizardScene<IBotContext>(
+      "adding_car_scene",
+      addVehicleHandler,
+    );
+
     const startScene = new Scenes.WizardScene<IBotContext>(
       "start_scene",
       async (ctx) => {
         await ctx.replyOrEditMessage("Главное Меню", {
           reply_markup: {
-            inline_keyboard: [
-              [{ text: "Добавить авто", callback_data: "add_vehicle" }],
+            keyboard: [
               [
                 {
-                  text: "Ранее добавленные авто",
-                  callback_data: "my_vehicles",
+                  text: ALL_CARS_MENU,
                 },
+                { text: ADD_CAR_MENU },
               ],
             ],
+            resize_keyboard: true,
           },
         });
-        ctx.wizard.next();
+        ctx.scene.leave();
       },
-      addVehicleHandler,
     );
 
     const viewVehiclesHandler = new Composer<IBotContext>();
+    // viewVehiclesHandler.hears(CLOSE_MENU, async (ctx) => {});
 
     viewVehiclesHandler.use(async (ctx) => {
       const userId = ctx.from!.id; // Access the user's Telegram ID
@@ -188,7 +239,7 @@ export class StartCommand extends Command {
 
           message += `${numberEmojis[index] || index + 1} `;
           message += constructLinkForVehicle(vehicle);
-          message += `  <i>Добавлено ${dateFormatter(vehicle.created_at)}</i>\n\n`;
+          message += `  <i>[${dateFormatter(vehicle.created_at)}]</i>\n\n`;
 
           if (inlineKeyboard[inlineKeyboard.length - 1].length === 5) {
             inlineKeyboard.push([]); // Start a new row
@@ -220,9 +271,16 @@ export class StartCommand extends Command {
           inlineKeyboard.push(navigationButtons);
         }
 
+        inlineKeyboard.push([
+          {
+            text: "Поиск по моделям",
+            callback_data: "search_cars",
+          },
+        ]);
+
         // Add a "Back" button to go back to the start scene
         inlineKeyboard.push([
-          { text: "Назад", callback_data: "go_to_start_scene" },
+          { text: CLOSE_MENU, callback_data: "delete_vehicles_scene" },
         ]);
 
         // Send or edit the message with vehicle information
@@ -239,7 +297,7 @@ export class StartCommand extends Command {
         await ctx.reply("У вас нет зарегистрированных машин.", {
           reply_markup: {
             inline_keyboard: [
-              [{ text: "Назад", callback_data: "go_to_start_scene" }],
+              [{ text: CLOSE_MENU, callback_data: "delete_vehicles_scene" }],
             ],
           },
         });
@@ -254,6 +312,6 @@ export class StartCommand extends Command {
       viewVehiclesHandler,
     );
 
-    return [startScene, viewVehiclesScene];
+    return [startScene, viewVehiclesScene, addingCarScene];
   }
 }

@@ -93,11 +93,28 @@ export class BotService {
   async getDescriptionByVehicle(id: number): Promise<string | null> {
     return await this.vehicleRepository.getDescriptionByVehicleID(id);
   }
+
   async addDescriptionToVehicle(description: string, id: number) {
     const newDescription = await this.vehicleRepository.addDescriptionToVehicle(
       description,
       id,
     );
+  }
+
+  async getMarkByVehicle(id: number): Promise<string | null> {
+    return await this.vehicleRepository.getMarkByVehicleID(id);
+  }
+
+  async getModelByVehicle(id: number): Promise<string | null> {
+    return await this.vehicleRepository.getModelByVehicleID(id);
+  }
+
+  async addModelToVehicle(model: string, id: number) {
+    const newModel = await this.vehicleRepository.addModelToVehicle(model, id);
+  }
+
+  async addMarkToVehicle(mark: string, id: number) {
+    const newMark = await this.vehicleRepository.addMarkToVehicle(mark, id);
   }
 
   async addRemoteReportLinkToVehicle(remoteLink: string, id: number) {

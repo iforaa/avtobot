@@ -8,13 +8,28 @@ import { MediaGroup } from "telegraf/typings/telegram-types";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 
+let CLOSE_MENU = "❌ Закрыть";
+
 export class AddVehicleCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
     super(bot, botService);
   }
 
   handle(): void {
+    this.bot.action("close_edit_scene", async (ctx) => {
+      try {
+        ctx.deleteMessage();
+      } catch {}
+
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
     this.bot.action("edit_info", (ctx) => ctx.scene.enter("edit_descr_scene"));
+
+    this.bot.action("edit_mark", (ctx) => ctx.scene.enter("edit_mark_scene"));
+    this.bot.action("edit_model", (ctx) => ctx.scene.enter("edit_model_scene"));
+
     this.bot.action("attach_remote_report", (ctx) =>
       ctx.scene.enter("attach_remote_report_scene"),
     );
@@ -23,8 +38,8 @@ export class AddVehicleCommand extends Command {
       ctx.scene.enter("setup_url_vin_scene"),
     );
 
-    this.bot.action("go_to_start_scene", (ctx) =>
-      ctx.scene.enter("start_scene"),
+    this.bot.action("go_to_vehicles_scene", (ctx) =>
+      ctx.scene.enter("my_vehicles_scene"),
     );
     this.bot.action("edit_content", async (ctx) => {
       try {
@@ -162,6 +177,8 @@ export class AddVehicleCommand extends Command {
   scenes(): Scenes.WizardScene<IBotContext>[] {
     const addVehicleHandler = new Composer<IBotContext>();
     const editDescrHandler = new Composer<IBotContext>();
+    const editMarkHandler = new Composer<IBotContext>();
+    const editModelHandler = new Composer<IBotContext>();
     const attachRemoteReportHandler = new Composer<IBotContext>();
     const setupURLVinHandler = new Composer<IBotContext>();
 
@@ -176,11 +193,13 @@ export class AddVehicleCommand extends Command {
 
         const vehicleDesc = vehicle.description;
         let message = constructLinkForVehicle(vehicle);
-        message += `  <i>Добавлено ${dateFormatter(vehicle.created_at)}</i>\n\n`;
+        message += ` \nДобавлено: <i>${dateFormatter(vehicle.created_at)}</i>\n\n`;
+        message += `Марка: ${vehicle.mark || "Н/Д"}`;
+        message += `\nМодель: ${vehicle.model || "Н/Д"}`;
         if (vehicleDesc) {
-          message += `Описание:\n${vehicleDesc}\n\n`;
+          message += `\n\nОписание:\n${vehicleDesc}\n\n`;
         } else {
-          message += "Описание отсутствует.\n\n";
+          message += "\n\nОписание отсутствует.\n\n";
         }
 
         if (vehicle.remote_report_link) {
@@ -215,13 +234,20 @@ export class AddVehicleCommand extends Command {
                   },
                 ],
                 [
+                  { text: "Установить марку", callback_data: "edit_mark" },
+                  {
+                    text: "Установить модель",
+                    callback_data: "edit_model",
+                  },
+                ],
+                [
                   {
                     text: "Прикрепить внешний отчет",
                     callback_data: "attach_remote_report",
                   },
                 ],
 
-                [{ text: "Назад", callback_data: "go_to_start_scene" }],
+                [{ text: "Назад", callback_data: "go_to_vehicles_scene" }],
               ],
             },
             parse_mode: "HTML",
@@ -240,6 +266,36 @@ export class AddVehicleCommand extends Command {
         currentVehicleID,
       );
       await ctx.reply("Описание добавлено успешно!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+
+    editMarkHandler.on("text", async (ctx) => {
+      const mark = ctx.message.text;
+      const currentVehicleID = ctx.session.currentVehicleID;
+      this.botService.addMarkToVehicle(mark || "", currentVehicleID);
+      await ctx.reply("Марка обновлена!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+
+    editModelHandler.on("text", async (ctx) => {
+      const model = ctx.message.text;
+      const currentVehicleID = ctx.session.currentVehicleID;
+      this.botService.addModelToVehicle(model || "", currentVehicleID);
+      await ctx.reply("Модель обновлена!");
 
       ctx.session.canBeEditedMessage = await ctx.reply(
         "[место для обновления]",
@@ -279,7 +335,7 @@ export class AddVehicleCommand extends Command {
         reportLink || "",
         currentVehicleID,
       );
-      await ctx.reply("Внишний отчет прикреплен!");
+      await ctx.reply("Внешний отчет прикреплен!");
 
       ctx.session.canBeEditedMessage = await ctx.reply(
         "[место для обновления]",
@@ -301,16 +357,95 @@ export class AddVehicleCommand extends Command {
           await ctx.reply("Текущее описание:");
           await ctx.reply(`${description}`);
         }
-        await ctx.reply("Введите описание для этого автомобиля:");
+        await ctx.reply("Введите описание для этого автомобиля:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
         return ctx.wizard.next();
       },
       editDescrHandler,
     );
 
+    const editMarkScene = new Scenes.WizardScene<IBotContext>(
+      "edit_mark_scene",
+      async (ctx) => {
+        const mark = await this.botService.getMarkByVehicle(
+          ctx.session.currentVehicleID,
+        );
+
+        if (mark && mark.length > 0) {
+          await ctx.reply("Текущая марка:");
+          await ctx.reply(`${mark}`);
+        }
+        await ctx.reply("Введите марку автомобиля:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
+
+        return ctx.wizard.next();
+      },
+      editMarkHandler,
+    );
+
+    const editModelScene = new Scenes.WizardScene<IBotContext>(
+      "edit_model_scene",
+      async (ctx) => {
+        const model = await this.botService.getModelByVehicle(
+          ctx.session.currentVehicleID,
+        );
+
+        if (model && model.length > 0) {
+          await ctx.reply("Текущая модель:");
+          await ctx.reply(`${model}`);
+        }
+        await ctx.reply("Введите модель автомобиля:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
+        return ctx.wizard.next();
+      },
+      editModelHandler,
+    );
+
     const attachRemoteReportScene = new Scenes.WizardScene<IBotContext>(
       "attach_remote_report_scene",
       async (ctx) => {
-        await ctx.reply("Присылай ссылку на отчет:");
+        await ctx.reply("Присылай ссылку на отчет:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
         return ctx.wizard.next();
       },
       attachRemoteReportHandler,
@@ -319,7 +454,18 @@ export class AddVehicleCommand extends Command {
     const setupUrlVinScene = new Scenes.WizardScene<IBotContext>(
       "setup_url_vin_scene",
       async (ctx) => {
-        await ctx.reply("Введите URL или VIN:");
+        await ctx.reply("Введите URL или VIN:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
         return ctx.wizard.next();
       },
       setupURLVinHandler,
@@ -330,6 +476,8 @@ export class AddVehicleCommand extends Command {
       editDescScene,
       setupUrlVinScene,
       attachRemoteReportScene,
+      editMarkScene,
+      editModelScene,
     ];
   }
 }

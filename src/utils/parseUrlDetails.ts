@@ -7,8 +7,9 @@ export function constructLinkForVehicle(vehicle: any) {
     } else {
       message += `<a href="${vehicle.url}">Ссылка</a>`; // Placeholder text with URL
     }
-  } else if (vehicle.vin) {
-    message += `${vehicle.vin}`; // Placeholder text with URL
+  }
+  if (vehicle.vin) {
+    message += `\nVIN: ${vehicle.vin}`;
   }
   return message;
 }
