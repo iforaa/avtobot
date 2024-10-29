@@ -28,7 +28,8 @@ export class SearchCarsCommand extends Command {
 
       // Filter vehicles to get only those with the selected model
       const matchingVehicles = vehicles.filter(
-        (vehicle) => vehicle.model === selectedModel,
+        (vehicle) =>
+          vehicle.model?.toLowerCase() === selectedModel.toLowerCase(),
       );
 
       // Create a message listing all vehicles with the selected model
