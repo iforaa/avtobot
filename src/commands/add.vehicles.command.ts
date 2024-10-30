@@ -78,6 +78,10 @@ export class AddVehicleCommand extends Command {
       ctx.scene.enter("add_vehicle_scene");
     });
 
+    // Helper function to create a delay
+    const delay = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
     this.bot.action("view_vehicle_photos", async (ctx) => {
       const vehicleID = ctx.session.currentVehicleID;
       ctx.session.mediaGroupsMessage = [];
@@ -118,9 +122,17 @@ export class AddVehicleCommand extends Command {
               };
             });
 
-            ctx.session.mediaGroupsMessage.push(
-              await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup),
-            );
+            try {
+              ctx.session.mediaGroupsMessage.push(
+                await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup),
+              );
+            } catch (error) {
+              console.error("Error sending media group:", error);
+              await ctx.reply("❌ Ошибка при отправке альбома фотографий.");
+            }
+
+            // Add a delay between each batch to avoid hitting rate limits
+            await delay(3500); // 1-second delay between each batch
           }
         };
 

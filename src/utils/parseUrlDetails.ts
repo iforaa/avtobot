@@ -45,9 +45,6 @@ export function parseURLDetails(url: string) {
     mileageText = mileageText.replace(/_km.*$/, "_km");
     const mileage = parseMileage(mileageText);
 
-    console.log(mileageText);
-    console.log(mileage);
-
     return {
       brand,
       model,
