@@ -121,6 +121,18 @@ export class BotService {
     await this.vehicleRepository.addRemoteReportLinkToVehicle(remoteLink, id);
   }
 
+  async addYearToVehicle(year: number, id: number) {
+    await this.vehicleRepository.addYearToVehicle(year, id);
+  }
+
+  async addMileageToVehicle(mileage: number, id: number) {
+    await this.vehicleRepository.addMileageToVehicle(mileage, id);
+  }
+
+  async addStarsToVehicle(stars: number, id: number) {
+    await this.vehicleRepository.addStarsToVehicle(stars, id);
+  }
+
   async getPhotosOfVehicle(id: number): Promise<string[]> {
     return await this.vehicleRepository.getPhotosByVehicleID(id);
   }

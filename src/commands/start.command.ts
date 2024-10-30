@@ -9,10 +9,10 @@ import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 
-let ADD_CAR_MENU = "Добавить авто";
-let ALL_CARS_MENU = "Все авто";
+let ADD_CAR_MENU = "➕ Занести авто";
+let ALL_CARS_MENU = "🚗 Мои авто";
 
-let CLOSE_MENU = "❌ Закрыть";
+let CLOSE_MENU = "❎ Закрыть";
 
 export class StartCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
@@ -273,7 +273,7 @@ export class StartCommand extends Command {
 
         inlineKeyboard.push([
           {
-            text: "Поиск по моделям",
+            text: "🔍 Поиск по моделям",
             callback_data: "search_cars",
           },
         ]);

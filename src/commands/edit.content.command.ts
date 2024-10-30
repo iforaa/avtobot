@@ -178,7 +178,6 @@ export class EditContentCommand extends Command {
       ctx.session.currentPhotoIndex - 1,
       0,
     );
-    await ctx.reply("Удалено.");
 
     if (photos.length > 1) {
       await this.displayPhoto(ctx);

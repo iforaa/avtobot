@@ -8,7 +8,7 @@ import { MediaGroup } from "telegraf/typings/telegram-types";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 
-let CLOSE_MENU = "❌ Закрыть";
+let CLOSE_MENU = "❎ Закрыть";
 
 export class AddVehicleCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
@@ -25,6 +25,13 @@ export class AddVehicleCommand extends Command {
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
     });
+
+    this.bot.action("edit_stars", (ctx) => ctx.scene.enter("edit_stars_scene"));
+    this.bot.action("edit_mileage", (ctx) =>
+      ctx.scene.enter("edit_mileage_scene"),
+    );
+    this.bot.action("edit_year", (ctx) => ctx.scene.enter("edit_year_scene"));
+
     this.bot.action("edit_info", (ctx) => ctx.scene.enter("edit_descr_scene"));
 
     this.bot.action("edit_mark", (ctx) => ctx.scene.enter("edit_mark_scene"));
@@ -58,13 +65,13 @@ export class AddVehicleCommand extends Command {
 
     this.bot.action("go_back_from_view_photos", async (ctx) => {
       try {
-        for (const group of ctx.session.mediaGroupsMessage) {
+        for (const group of ctx.session.mediaGroupsMessage.reverse()) {
           for (const message of group) {
-            await ctx.deleteMessage(message.message_id);
+            ctx.deleteMessage(message.message_id);
           }
         }
-        for (const message of ctx.session.anyMessagesToDelete) {
-          await ctx.deleteMessage(message.message_id);
+        for (const message of ctx.session.anyMessagesToDelete.reverse()) {
+          ctx.deleteMessage(message.message_id);
         }
         ctx.session.anyMessagesToDelete = [];
       } catch {}
@@ -179,6 +186,11 @@ export class AddVehicleCommand extends Command {
     const editDescrHandler = new Composer<IBotContext>();
     const editMarkHandler = new Composer<IBotContext>();
     const editModelHandler = new Composer<IBotContext>();
+
+    const editYearHandler = new Composer<IBotContext>();
+    const editMileageHandler = new Composer<IBotContext>();
+    const editStarsHandler = new Composer<IBotContext>();
+
     const attachRemoteReportHandler = new Composer<IBotContext>();
     const setupURLVinHandler = new Composer<IBotContext>();
 
@@ -196,6 +208,20 @@ export class AddVehicleCommand extends Command {
         message += ` \nДобавлено: <i>${dateFormatter(vehicle.created_at)}</i>\n\n`;
         message += `Марка: ${vehicle.mark || "Н/Д"}`;
         message += `\nМодель: ${vehicle.model || "Н/Д"}`;
+        message += `\nПробег: ${vehicle.mileage || "Н/Д"}`;
+        message += `\nГод: ${vehicle.year || "Н/Д"}`;
+
+        const maxStars = 7;
+        const filledStar = "⭐";
+        const emptyStar = "☆";
+
+        const stars = vehicle.stars ?? "Н/Д";
+        const starDisplay =
+          typeof stars === "number"
+            ? filledStar.repeat(stars) + emptyStar.repeat(maxStars - stars)
+            : stars;
+
+        message += `\nБалл: ${starDisplay}`;
         if (vehicleDesc) {
           message += `\n\nОписание:\n${vehicleDesc}\n\n`;
         } else {
@@ -217,41 +243,53 @@ export class AddVehicleCommand extends Command {
               inline_keyboard: [
                 [
                   {
-                    text: "Прикрепить 📷/🎥",
+                    text: "📷 Прикрепить фото",
                     callback_data: "attach_photos",
                   },
                   {
-                    text: "Показать 📷/🎥",
+                    text: "📎 Показать фото",
                     callback_data: "view_vehicle_photos",
                   },
                   // { text: "Прикрепить видео", callback_data: "attach_video" },
                 ],
                 [
-                  { text: "Добавить описание", callback_data: "edit_info" },
+                  { text: "🛠️ Добавить описание", callback_data: "edit_info" },
                   {
-                    text: "Установить URL/VIN",
+                    text: "🆔 Установить URL/VIN",
                     callback_data: "setup_url_vin",
                   },
                 ],
                 [
-                  { text: "Установить марку", callback_data: "edit_mark" },
+                  { text: "🚗 Установить марку", callback_data: "edit_mark" },
                   {
-                    text: "Установить модель",
+                    text: "🚘 Установить модель",
                     callback_data: "edit_model",
                   },
                 ],
                 [
+                  { text: "📅 Установить год", callback_data: "edit_year" },
                   {
-                    text: "Прикрепить внешний отчет",
+                    text: "🧭 Установить пробег",
+                    callback_data: "edit_mileage",
+                  },
+                ],
+                [
+                  {
+                    text: "📝 Прикрепить внешний отчет",
                     callback_data: "attach_remote_report",
                   },
                 ],
+                [
+                  {
+                    text: "⭐ Проставить баллы",
+                    callback_data: "edit_stars",
+                  },
+                ],
 
-                [{ text: "Назад", callback_data: "go_to_vehicles_scene" }],
+                [{ text: "↩️ Назад", callback_data: "go_to_vehicles_scene" }],
               ],
             },
             parse_mode: "HTML",
-            disable_web_page_preview: true,
           },
         );
         ctx.scene.leave();
@@ -341,6 +379,73 @@ export class AddVehicleCommand extends Command {
         "[место для обновления]",
       );
 
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+
+    editYearHandler.on("text", async (ctx) => {
+      const yearText = ctx.message.text;
+      const year = parseInt(yearText, 10);
+      const currentVehicleID = ctx.session.currentVehicleID;
+
+      // Validate that the year is an integer and within a reasonable range (e.g., 1900 to the current year)
+      const currentYear = new Date().getFullYear();
+      if (isNaN(year) || year < 1900 || year > currentYear) {
+        await ctx.reply("Пожалуйста, введите корректный год (например, 2021).");
+        return;
+      }
+
+      await this.botService.addYearToVehicle(year, currentVehicleID);
+      await ctx.reply("Год успешно обновлен!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+    editMileageHandler.on("text", async (ctx) => {
+      const mileageText = ctx.message.text;
+      const mileage = parseInt(mileageText, 10);
+      const currentVehicleID = ctx.session.currentVehicleID;
+
+      // Validate that mileage is an integer and non-negative
+      if (isNaN(mileage) || mileage < 0) {
+        await ctx.reply(
+          "Пожалуйста, введите корректный пробег (например, 150000).",
+        );
+        return;
+      }
+
+      await this.botService.addMileageToVehicle(mileage, currentVehicleID);
+      await ctx.reply("Пробег успешно обновлен!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
+      ctx.scene.leave();
+      ctx.scene.enter("add_vehicle_scene");
+      ctx.wizard.cursor = 1;
+    });
+    editStarsHandler.on("text", async (ctx) => {
+      const starsText = ctx.message.text;
+      const stars = parseInt(starsText, 10);
+      const currentVehicleID = ctx.session.currentVehicleID;
+
+      // Validate that stars is an integer between 1 and 7
+      if (isNaN(stars) || stars < 1 || stars > 7) {
+        await ctx.reply("Пожалуйста, введите количество баллов от 1 до 7.");
+        return;
+      }
+
+      await this.botService.addStarsToVehicle(stars, currentVehicleID);
+      await ctx.reply("Звезды успешно обновлены!");
+
+      ctx.session.canBeEditedMessage = await ctx.reply(
+        "[место для обновления]",
+      );
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -471,6 +576,66 @@ export class AddVehicleCommand extends Command {
       setupURLVinHandler,
     );
 
+    const editMileageScene = new Scenes.WizardScene<IBotContext>(
+      "edit_mileage_scene",
+      async (ctx) => {
+        await ctx.reply("Укажите пробег:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
+        return ctx.wizard.next();
+      },
+      editMileageHandler,
+    );
+
+    const editYearScene = new Scenes.WizardScene<IBotContext>(
+      "edit_year_scene",
+      async (ctx) => {
+        await ctx.reply("Укажите год выпуска авто:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
+        return ctx.wizard.next();
+      },
+      editYearHandler,
+    );
+
+    const editStarsScene = new Scenes.WizardScene<IBotContext>(
+      "edit_stars_scene",
+      async (ctx) => {
+        await ctx.reply("Оцените авто от 1 до 7:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_edit_scene",
+                },
+              ],
+            ],
+          },
+        });
+        return ctx.wizard.next();
+      },
+      editStarsHandler,
+    );
+
     return [
       addVehicleScene,
       editDescScene,
@@ -478,6 +643,9 @@ export class AddVehicleCommand extends Command {
       attachRemoteReportScene,
       editMarkScene,
       editModelScene,
+      editMileageScene,
+      editYearScene,
+      editStarsScene,
     ];
   }
 }

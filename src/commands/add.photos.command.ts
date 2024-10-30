@@ -38,6 +38,7 @@ export class AddPhotoCommand extends Command {
 
       uploadUserPhotos(ctx.message, async (filenames) => {
         await ctx.reply("Переливаем на наш сервер, подожди");
+
         for (const filename of filenames) {
           const fileLink: URL = await ctx.telegram.getFileLink(filename.fileId);
           const datastoreFilename =

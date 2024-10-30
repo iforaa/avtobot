@@ -23,10 +23,12 @@ export class DBRepository {
     // Set default values if brand or model is null
     const brand = carDetails?.brand || "н/д";
     const model = carDetails?.model || "н/д";
+    const year = carDetails?.year || 0;
+    const mileage = carDetails?.mileage || 0;
 
     const query = `
-        INSERT INTO vehicles (url, user_id, mark, model)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO vehicles (url, user_id, mark, model, year, mileage)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id
       `;
 
@@ -35,6 +37,8 @@ export class DBRepository {
       userID,
       brand,
       model,
+      year,
+      mileage,
     ]);
     return result[0].id;
   }
@@ -112,6 +116,58 @@ export class DBRepository {
       throw error;
     }
   }
+
+  async addYearToVehicle(year: number, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET year = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [year, id]);
+
+      // Check if the vehicle was found and updated
+      if (result.length > 0) {
+        return result[0]; // Return the updated vehicle
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
+
+  async addMileageToVehicle(mileage: number, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET mileage = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [mileage, id]);
+
+      // Check if the vehicle was found and updated
+      if (result.length > 0) {
+        return result[0]; // Return the updated vehicle
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
+
+  async addStarsToVehicle(stars: number, id: number): Promise<any> {
+    const query = "UPDATE vehicles SET stars = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [stars, id]);
+
+      // Check if the vehicle was found and updated
+      if (result.length > 0) {
+        return result[0]; // Return the updated vehicle
+      } else {
+        return null; // Vehicle with the provided URL not found
+      }
+    } catch (error) {
+      console.error("Error updating vehicle description:", error);
+      throw error;
+    }
+  }
+
   async addRemoteReportLinkToVehicle(
     remoteLink: string,
     id: number,
@@ -212,7 +268,8 @@ export class DBRepository {
       SELECT p.photo_url
       FROM photos p
       JOIN vehicles v ON p.vehicle_id = v.id
-      WHERE v.id = $1;
+      WHERE v.id = $1
+      ORDER BY p.created_at DESC;
     `;
 
     try {

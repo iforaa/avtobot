@@ -19,25 +19,56 @@ export function parseURLDetails(url: string) {
     const urlParts = url.split("/");
 
     // Extract the relevant part of the URL that contains the details
-    const carDetailsPart = urlParts[5]; // This part contains brand_model_year
+    const carDetailsPart = urlParts[5]; // This part contains brand_model_year_mileage
 
     // Split the car details part by underscores
     const carDetails = carDetailsPart.split("_");
 
-    // Extract the brand, model (multiple parts), and year
+    // Determine the current year for the upper range
+    const currentYear = new Date().getFullYear();
+    const yearIndex = carDetails.findIndex(
+      (part) =>
+        /^\d{4}$/.test(part) &&
+        parseInt(part) >= 1900 &&
+        parseInt(part) <= currentYear + 1,
+    );
+
+    if (yearIndex === -1) {
+      throw new Error("Year not found in the URL");
+    }
+
+    // Extract brand, model, year, and mileage based on the identified year
     const brand = capitalizeWords(carDetails[0]);
-    const model = capitalizeWords(carDetails.slice(1, -2).join(" ")); // Everything except the year and engine details
-    const year = carDetails[carDetails.length - 2];
+    const model = capitalizeWords(carDetails.slice(1, yearIndex).join(" "));
+    const year = carDetails[yearIndex];
+    let mileageText = carDetails.slice(yearIndex + 1).join("_");
+    mileageText = mileageText.replace(/_km.*$/, "_km");
+    const mileage = parseMileage(mileageText);
+
+    console.log(mileageText);
+    console.log(mileage);
 
     return {
       brand,
       model,
       year,
+      mileage,
     };
   } catch (error) {
     return null;
   }
 }
+
+function parseMileage(mileageText: string): number | null {
+  // Match mileage pattern with underscores as thousand separators and "km" at the end
+  const mileageMatch = mileageText.match(/^(\d{1,3}(?:_\d{3})*)_km$/i);
+  if (mileageMatch) {
+    // Remove underscores and parse as integer
+    return parseInt(mileageMatch[1].replace(/_/g, ""), 10);
+  }
+  return null;
+}
+
 function capitalizeWords(str: string) {
   return str
     .split(" ")
