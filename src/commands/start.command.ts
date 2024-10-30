@@ -9,8 +9,8 @@ import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 
-let ADD_CAR_MENU = "➕ Занести авто";
-let ALL_CARS_MENU = "🚗 Мои авто";
+export let ADD_CAR_MENU = "➕ Занести авто";
+export let ALL_CARS_MENU = "🚗 Мои авто";
 
 let CLOSE_MENU = "❎ Закрыть";
 

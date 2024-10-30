@@ -6,7 +6,7 @@ export const uploadUserPhotos = async (
   message: any,
   filenames: (images: Array<{ type: string; fileId: string }>) => void,
 ): Promise<void> => {
-  const userId = message.from.id; // Use user ID as unique identifier for each upload session
+  const userId = message.from.id;
   const mediaGroupId = message.media_group_id;
   const images: Array<{ type: string; fileId: string }> = [];
 
@@ -15,16 +15,16 @@ export const uploadUserPhotos = async (
     accumulators[userId] = { photos: [], timeout: null };
   }
 
-  // If message is part of a media group
   if (mediaGroupId) {
+    // If message is part of a media group, add to accumulator
     accumulators[userId].photos.push(message);
 
-    // Reset any existing timeout to wait for more photos
+    // Reset and extend the timeout every time a new message in the group arrives
     if (accumulators[userId].timeout) {
       clearTimeout(accumulators[userId].timeout);
     }
 
-    // Set a new timeout to finalize and process all photos after messages stop arriving
+    // Set a new timeout, adding a delay to ensure all groups are received
     accumulators[userId].timeout = setTimeout(async () => {
       const messages = accumulators[userId].photos;
 
@@ -48,7 +48,7 @@ export const uploadUserPhotos = async (
 
       // Clean up the accumulator for the user
       delete accumulators[userId];
-    }, 2000); // Wait for 2 seconds to ensure all messages are collected
+    }, 3000); // Wait for 3 seconds after the last message arrives
   } else {
     // Single photo or video outside a media group
     if (message.photo) {

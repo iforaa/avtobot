@@ -7,7 +7,7 @@ import { WizardContext } from "telegraf/typings/scenes";
 import { MediaGroup } from "telegraf/typings/telegram-types";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
-
+import { ALL_CARS_MENU, ADD_CAR_MENU } from "./start.command";
 let CLOSE_MENU = "❎ Закрыть";
 
 export class AddVehicleCommand extends Command {
