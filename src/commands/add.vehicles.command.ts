@@ -132,7 +132,7 @@ export class AddVehicleCommand extends Command {
             }
 
             // Add a delay between each batch to avoid hitting rate limits
-            await delay(3500); // 1-second delay between each batch
+            await delay(3500);
           }
         };
 
@@ -255,45 +255,45 @@ export class AddVehicleCommand extends Command {
               inline_keyboard: [
                 [
                   {
-                    text: "📷 Прикрепить фото",
+                    text: "📷 Добавить",
                     callback_data: "attach_photos",
                   },
                   {
-                    text: "📎 Показать фото",
+                    text: "📷 Показать",
                     callback_data: "view_vehicle_photos",
                   },
                   // { text: "Прикрепить видео", callback_data: "attach_video" },
                 ],
                 [
-                  { text: "🛠️ Добавить описание", callback_data: "edit_info" },
+                  { text: "🛠️ Описание", callback_data: "edit_info" },
                   {
-                    text: "🆔 Установить URL/VIN",
+                    text: "🆔 URL/VIN",
                     callback_data: "setup_url_vin",
                   },
                 ],
                 [
-                  { text: "🚗 Установить марку", callback_data: "edit_mark" },
+                  { text: "🚗 Марка", callback_data: "edit_mark" },
                   {
-                    text: "🚘 Установить модель",
+                    text: "🚘 Модель",
                     callback_data: "edit_model",
                   },
                 ],
                 [
-                  { text: "📅 Установить год", callback_data: "edit_year" },
+                  { text: "📅 Год", callback_data: "edit_year" },
                   {
-                    text: "🧭 Установить пробег",
+                    text: "🧭 Пробег",
                     callback_data: "edit_mileage",
                   },
                 ],
                 [
                   {
-                    text: "📝 Прикрепить внешний отчет",
+                    text: "📝 Внешний отчет",
                     callback_data: "attach_remote_report",
                   },
                 ],
                 [
                   {
-                    text: "⭐ Проставить баллы",
+                    text: "⭐ Баллы",
                     callback_data: "edit_stars",
                   },
                 ],
