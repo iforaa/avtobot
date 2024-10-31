@@ -448,21 +448,22 @@ export class AddVehicleCommand extends Command {
       const mileageText = ctx.message.text;
       const mileage = parseInt(mileageText, 10);
       const currentVehicleID = ctx.session.currentVehicleID;
-
+      try {
+        ctx.deleteMessage();
+      } catch {}
       // Validate that mileage is an integer and non-negative
       if (isNaN(mileage) || mileage < 0) {
-        await ctx.reply(
-          "Пожалуйста, введите корректный пробег (например, 150000).",
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply(
+            "Пожалуйста, введите корректный пробег (например, 150000).",
+          ),
         );
         return;
       }
 
       await this.botService.addMileageToVehicle(mileage, currentVehicleID);
 
-      try {
-        ctx.deleteMessage();
-      } catch {}
-      await this.clearMessages(ctx);
+      this.clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
