@@ -124,7 +124,9 @@ export class EditContentCommand extends Command {
 
       if (currentType !== nextType) {
         // If the content type changes, delete the current message
-        await ctx.deleteMessage(ctx.session.canBeEditedMessage?.message_id);
+        try {
+          await ctx.deleteMessage(ctx.session.canBeEditedMessage?.message_id);
+        } catch {}
         ctx.session.canBeEditedMessage = null;
       }
 
@@ -148,7 +150,9 @@ export class EditContentCommand extends Command {
 
       if (currentType !== previousType) {
         // If the content type changes, delete the current message
-        await ctx.deleteMessage(ctx.session.canBeEditedMessage?.message_id);
+        try {
+          await ctx.deleteMessage(ctx.session.canBeEditedMessage?.message_id);
+        } catch {}
         ctx.session.canBeEditedMessage = null;
       }
 

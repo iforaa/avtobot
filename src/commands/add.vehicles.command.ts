@@ -15,12 +15,25 @@ export class AddVehicleCommand extends Command {
     super(bot, botService);
   }
 
+  async clearMessages(ctx: any) {
+    for (const group of ctx.session.mediaGroupsMessage) {
+      for (const message of group) {
+        try {
+          ctx.deleteMessage(message.message_id);
+        } catch {}
+      }
+    }
+    for (const message of ctx.session.anyMessagesToDelete) {
+      try {
+        ctx.deleteMessage(message.message_id);
+      } catch {}
+    }
+    ctx.session.anyMessagesToDelete = [];
+  }
+
   handle(): void {
     this.bot.action("close_edit_scene", async (ctx) => {
-      try {
-        ctx.deleteMessage();
-      } catch {}
-
+      await this.clearMessages(ctx);
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -49,32 +62,37 @@ export class AddVehicleCommand extends Command {
       ctx.scene.enter("my_vehicles_scene"),
     );
     this.bot.action("edit_content", async (ctx) => {
-      try {
-        for (const group of ctx.session.mediaGroupsMessage) {
-          for (const message of group) {
+      for (const group of ctx.session.mediaGroupsMessage) {
+        for (const message of group)
+          try {
             await ctx.deleteMessage(message.message_id);
-          }
-        }
-        for (const message of ctx.session.anyMessagesToDelete) {
+          } catch {}
+      }
+      for (const message of ctx.session.anyMessagesToDelete) {
+        try {
           await ctx.deleteMessage(message.message_id);
-        }
-        ctx.session.anyMessagesToDelete = [];
-      } catch {}
+        } catch {}
+      }
+      ctx.session.anyMessagesToDelete = [];
+
       ctx.scene.enter("edit_content_scene");
     });
 
     this.bot.action("go_back_from_view_photos", async (ctx) => {
-      try {
-        for (const group of ctx.session.mediaGroupsMessage.reverse()) {
-          for (const message of group) {
+      for (const group of ctx.session.mediaGroupsMessage.reverse()) {
+        for (const message of group) {
+          try {
             ctx.deleteMessage(message.message_id);
-          }
+          } catch {}
         }
-        for (const message of ctx.session.anyMessagesToDelete.reverse()) {
+      }
+      for (const message of ctx.session.anyMessagesToDelete.reverse()) {
+        try {
           ctx.deleteMessage(message.message_id);
-        }
-        ctx.session.anyMessagesToDelete = [];
-      } catch {}
+        } catch {}
+      }
+      ctx.session.anyMessagesToDelete = [];
+
       ctx.scene.enter("add_vehicle_scene");
     });
 
@@ -154,8 +172,9 @@ export class AddVehicleCommand extends Command {
           videoUrls.length > 0 ? "📹 Видео:\n" + videoUrls.join("\n") : "";
 
         try {
-          await ctx.deleteMessage();
-          ctx.session.anyMessagesToDelete = [];
+          try {
+            await ctx.deleteMessage();
+          } catch {}
 
           // Send photo albums
           await sendMediaGroups(ctx, photos);
@@ -188,7 +207,9 @@ export class AddVehicleCommand extends Command {
           await ctx.reply("❌ Не удалось отправить альбом фотографий.");
         }
       } else {
-        await ctx.reply("Фотографии отсутствуют.");
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply("Фотографии отсутствуют."),
+        );
       }
     });
   }
@@ -315,11 +336,11 @@ export class AddVehicleCommand extends Command {
         description || "",
         currentVehicleID,
       );
-      await ctx.reply("Описание добавлено успешно!");
+      try {
+        ctx.deleteMessage();
+      } catch {}
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      await this.clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -330,12 +351,11 @@ export class AddVehicleCommand extends Command {
       const mark = ctx.message.text;
       const currentVehicleID = ctx.session.currentVehicleID;
       this.botService.addMarkToVehicle(mark || "", currentVehicleID);
-      await ctx.reply("Марка обновлена!");
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
-
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      await this.clearMessages(ctx);
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -345,11 +365,10 @@ export class AddVehicleCommand extends Command {
       const model = ctx.message.text;
       const currentVehicleID = ctx.session.currentVehicleID;
       this.botService.addModelToVehicle(model || "", currentVehicleID);
-      await ctx.reply("Модель обновлена!");
-
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      await this.clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -363,15 +382,21 @@ export class AddVehicleCommand extends Command {
       try {
         await this.botService.editVehicleUrlOrVin(data, currentVehicleID);
       } catch {
-        return await ctx.reply(
-          "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+        try {
+          ctx.deleteMessage();
+        } catch {}
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply(
+            "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+          ),
         );
+        return;
       }
-      await ctx.reply("Обновлено!");
+      try {
+        ctx.deleteMessage();
+      } catch {}
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      await this.clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -385,11 +410,11 @@ export class AddVehicleCommand extends Command {
         reportLink || "",
         currentVehicleID,
       );
-      await ctx.reply("Внешний отчет прикреплен!");
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      await this.clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -409,11 +434,12 @@ export class AddVehicleCommand extends Command {
       }
 
       await this.botService.addYearToVehicle(year, currentVehicleID);
-      await ctx.reply("Год успешно обновлен!");
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      await this.clearMessages(ctx);
+
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -432,11 +458,12 @@ export class AddVehicleCommand extends Command {
       }
 
       await this.botService.addMileageToVehicle(mileage, currentVehicleID);
-      await ctx.reply("Пробег успешно обновлен!");
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      await this.clearMessages(ctx);
+
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -445,19 +472,20 @@ export class AddVehicleCommand extends Command {
       const starsText = ctx.message.text;
       const stars = parseInt(starsText, 10);
       const currentVehicleID = ctx.session.currentVehicleID;
-
+      try {
+        ctx.deleteMessage();
+      } catch {}
       // Validate that stars is an integer between 1 and 7
       if (isNaN(stars) || stars < 1 || stars > 7) {
-        await ctx.reply("Пожалуйста, введите количество баллов от 1 до 7.");
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply("Пожалуйста, введите количество баллов от 1 до 7."),
+        );
         return;
       }
 
       await this.botService.addStarsToVehicle(stars, currentVehicleID);
-      await ctx.reply("Звезды успешно обновлены!");
 
-      ctx.session.canBeEditedMessage = await ctx.reply(
-        "[место для обновления]",
-      );
+      await this.clearMessages(ctx);
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -471,10 +499,17 @@ export class AddVehicleCommand extends Command {
         );
 
         if (description && description.length > 0) {
-          await ctx.reply("Текущее описание:");
-          await ctx.reply(`${description}`);
+          try {
+            ctx.deleteMessage();
+          } catch {}
+          ctx.session.anyMessagesToDelete.push(
+            await ctx.reply("Текущее описание:"),
+          );
+          ctx.session.anyMessagesToDelete.push(
+            await ctx.reply(`${description}`),
+          );
         }
-        await ctx.reply("Введите описание для этого автомобиля:", {
+        await ctx.replyOrEditMessage("Введите описание для этого автомобиля:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -499,10 +534,15 @@ export class AddVehicleCommand extends Command {
         );
 
         if (mark && mark.length > 0) {
-          await ctx.reply("Текущая марка:");
-          await ctx.reply(`${mark}`);
+          try {
+            ctx.deleteMessage();
+          } catch {}
+          ctx.session.anyMessagesToDelete.push(
+            await ctx.reply("Текущая марка:"),
+          );
+          ctx.session.anyMessagesToDelete.push(await ctx.reply(`${mark}`));
         }
-        await ctx.reply("Введите марку автомобиля:", {
+        await ctx.replyOrEditMessage("Введите марку автомобиля:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -528,10 +568,15 @@ export class AddVehicleCommand extends Command {
         );
 
         if (model && model.length > 0) {
-          await ctx.reply("Текущая модель:");
-          await ctx.reply(`${model}`);
+          try {
+            ctx.deleteMessage();
+          } catch {}
+          ctx.session.anyMessagesToDelete.push(
+            await ctx.reply("Текущая модель:"),
+          );
+          ctx.session.anyMessagesToDelete.push(await ctx.reply(`${model}`));
         }
-        await ctx.reply("Введите модель автомобиля:", {
+        await ctx.replyOrEditMessage("Введите модель автомобиля:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -551,7 +596,7 @@ export class AddVehicleCommand extends Command {
     const attachRemoteReportScene = new Scenes.WizardScene<IBotContext>(
       "attach_remote_report_scene",
       async (ctx) => {
-        await ctx.reply("Присылай ссылку на отчет:", {
+        await ctx.replyOrEditMessage("Присылай ссылку на отчет:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -571,7 +616,7 @@ export class AddVehicleCommand extends Command {
     const setupUrlVinScene = new Scenes.WizardScene<IBotContext>(
       "setup_url_vin_scene",
       async (ctx) => {
-        await ctx.reply("Введите URL или VIN:", {
+        await ctx.replyOrEditMessage("Введите URL или VIN:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -591,7 +636,7 @@ export class AddVehicleCommand extends Command {
     const editMileageScene = new Scenes.WizardScene<IBotContext>(
       "edit_mileage_scene",
       async (ctx) => {
-        await ctx.reply("Укажите пробег:", {
+        await ctx.replyOrEditMessage("Укажите пробег:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -611,7 +656,7 @@ export class AddVehicleCommand extends Command {
     const editYearScene = new Scenes.WizardScene<IBotContext>(
       "edit_year_scene",
       async (ctx) => {
-        await ctx.reply("Укажите год выпуска авто:", {
+        await ctx.replyOrEditMessage("Укажите год выпуска авто:", {
           reply_markup: {
             inline_keyboard: [
               [
@@ -631,7 +676,7 @@ export class AddVehicleCommand extends Command {
     const editStarsScene = new Scenes.WizardScene<IBotContext>(
       "edit_stars_scene",
       async (ctx) => {
-        await ctx.reply("Оцените авто от 1 до 7:", {
+        await ctx.replyOrEditMessage("Оцените авто от 1 до 7:", {
           reply_markup: {
             inline_keyboard: [
               [
