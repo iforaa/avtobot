@@ -179,26 +179,24 @@ export class AddPhotoCommand extends Command {
       ["Жми, когда все загрузится", "Жми, для возврата назад"],
       async (ctx) => {
         // try {
-        //   ctx.deleteMessage();
+        //   await ctx.deleteMessage();
         // } catch {}
-
-        ctx.session.anyMessagesToDelete.push(
-          await ctx.reply("🚗🚗🚗", {
-            reply_markup: {
-              keyboard: [
-                [
-                  {
-                    text: ALL_CARS_MENU,
-                  },
-                  { text: ADD_CAR_MENU },
-                ],
+        await this.clearMessages(ctx);
+        await ctx.reply("🚗🚗🚗", {
+          reply_markup: {
+            keyboard: [
+              [
+                {
+                  text: ALL_CARS_MENU,
+                },
+                { text: ADD_CAR_MENU },
               ],
-              resize_keyboard: true,
-            },
-          }),
-        );
-        this.clearMessages(ctx);
-        ctx.scene.leave();
+            ],
+            resize_keyboard: true,
+          },
+        });
+
+        await ctx.scene.leave();
         return await ctx.scene.enter("photos_scene");
       },
     );
@@ -239,7 +237,7 @@ export class AddPhotoCommand extends Command {
       "add_photo_scene",
       async (ctx) => {
         // try {
-        //   ctx.deleteMessage();
+        //   await ctx.deleteMessage();
         // } catch {}
         ctx.session.anyMessagesToDelete.push(
           await ctx.reply("Присылай фото или видео", {
