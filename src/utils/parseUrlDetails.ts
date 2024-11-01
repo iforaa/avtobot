@@ -10,8 +10,24 @@ export function constructLinkForVehicle(vehicle: any) {
   }
   if (vehicle.vin) {
     message += `\nVIN: ${vehicle.vin}`;
+    if (vehicle.url === null) {
+      // if (!vehicle.url) {
+      message += "\n";
+      message +=
+        vehicle.mark != null ? `${capitalizeFirstLetter(vehicle.mark)} ` : "";
+      message +=
+        vehicle.model != null ? `${capitalizeFirstLetter(vehicle.model)} ` : "";
+      message += vehicle.year != null ? `${vehicle.year} ` : "";
+      message +=
+        vehicle.mileage != null ? `${vehicle.mileage.capitalized}` : "";
+    }
   }
+
   return message;
+}
+
+function capitalizeFirstLetter(val: string) {
+  return val.charAt(0).toUpperCase() + val.slice(1);
 }
 
 export function parseURLDetails(url: string) {
