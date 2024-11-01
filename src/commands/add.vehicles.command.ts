@@ -77,141 +77,6 @@ export class AddVehicleCommand extends Command {
 
       ctx.scene.enter("edit_content_scene");
     });
-
-    this.bot.action("go_back_from_view_photos", async (ctx) => {
-      for (const group of ctx.session.mediaGroupsMessage.reverse()) {
-        for (const message of group) {
-          try {
-            ctx.deleteMessage(message.message_id);
-          } catch {}
-        }
-      }
-      for (const message of ctx.session.anyMessagesToDelete.reverse()) {
-        try {
-          ctx.deleteMessage(message.message_id);
-        } catch {}
-      }
-      ctx.session.anyMessagesToDelete = [];
-
-      ctx.scene.enter("add_vehicle_scene");
-    });
-
-    // Helper function to create a delay
-    const delay = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
-
-    this.bot.action("view_vehicle_photos", async (ctx) => {
-      const vehicleID = ctx.session.currentVehicleID;
-      ctx.session.mediaGroupsMessage = [];
-
-      if (!vehicleID) {
-        await ctx.reply("Пожалуйста, выберите авто.");
-        return;
-      }
-
-      const photos = await this.botService.getPhotosOfVehicle(vehicleID);
-
-      const chunkArray = (array: any[], chunkSize: number) => {
-        const result = [];
-        for (let i = 0; i < array.length; i += chunkSize) {
-          result.push(array.slice(i, i + chunkSize));
-        }
-        return result;
-      };
-
-      if (photos.length > 0) {
-        const sendMediaGroups = async (ctx: any, photos: string[]) => {
-          const mediaChunks = chunkArray(
-            photos.filter((photo) => photo.includes("photos/")),
-            10,
-          );
-
-          for (const chunk of mediaChunks) {
-            const mediaGroup: MediaGroup = chunk.map((photo) => {
-              let media = photo.replace(
-                "photos/",
-                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
-              );
-              media += "/";
-              media += "photo";
-              return {
-                type: "photo",
-                media: media,
-              };
-            });
-
-            try {
-              ctx.session.mediaGroupsMessage.push(
-                await ctx.telegram.sendMediaGroup(ctx.chat!.id, mediaGroup),
-              );
-            } catch (error) {
-              console.error("Error sending media group:", error);
-              await ctx.reply("❌ Ошибка при отправке альбома фотографий.");
-            }
-
-            // Add a delay between each batch to avoid hitting rate limits
-            await delay(3500);
-          }
-        };
-
-        // Handling video URLs
-        const videoUrls = photos
-          .filter((photo) => photo.includes("videos/"))
-          .map((video, index) => {
-            let url = video.replace(
-              "videos/",
-              "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
-            );
-            url += "/";
-            url += "video";
-            return `<a href="${url}">Смотреть видео ${index + 1}</a>`;
-          });
-
-        // Create a message with numbered video links
-        const videoMessage =
-          videoUrls.length > 0 ? "📹 Видео:\n" + videoUrls.join("\n") : "";
-
-        try {
-          try {
-            await ctx.deleteMessage();
-          } catch {}
-
-          // Send photo albums
-          await sendMediaGroups(ctx, photos);
-
-          // Send the video links as a text message
-          if (videoMessage) {
-            ctx.session.anyMessagesToDelete.push(
-              await ctx.reply(videoMessage, { parse_mode: "HTML" }),
-            );
-          }
-
-          ctx.session.canBeEditedMessage = await ctx.reply("✅ Доставлено!", {
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "Назад",
-                    callback_data: "go_back_from_view_photos",
-                  },
-                  {
-                    text: "Редактировать",
-                    callback_data: "edit_content",
-                  },
-                ],
-              ],
-            },
-          });
-        } catch (error) {
-          console.error("Error sending photo album:", error);
-          await ctx.reply("❌ Не удалось отправить альбом фотографий.");
-        }
-      } else {
-        ctx.session.anyMessagesToDelete.push(
-          await ctx.reply("Фотографии отсутствуют."),
-        );
-      }
-    });
   }
 
   scenes(): Scenes.WizardScene<IBotContext>[] {
@@ -276,13 +141,14 @@ export class AddVehicleCommand extends Command {
               inline_keyboard: [
                 [
                   {
-                    text: "📷 Добавить",
-                    callback_data: "attach_photos",
+                    text: "📷 Фото/Видео",
+                    // callback_data: "attach_photos",
+                    callback_data: "view_photos",
                   },
-                  {
-                    text: "📷 Показать",
-                    callback_data: "view_vehicle_photos",
-                  },
+                  // {
+                  //   text: "📷 ",
+                  //   callback_data: "view_vehicle_photos",
+                  // },
                   // { text: "Прикрепить видео", callback_data: "attach_video" },
                 ],
                 [

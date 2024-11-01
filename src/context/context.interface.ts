@@ -1,6 +1,7 @@
 import { Context } from "telegraf";
 import { Scenes } from "telegraf";
 import { SessionContext } from "telegraf/typings/session";
+import { PhotoSection } from "../utils/photoSection";
 
 export interface SessionData extends Scenes.WizardSession<WizardSession> {
   passedValidation: boolean;
@@ -12,6 +13,8 @@ export interface SessionData extends Scenes.WizardSession<WizardSession> {
   canBeEditedMessage?: any;
   mediaGroupsMessage: any[];
   anyMessagesToDelete: any[];
+
+  photoSectionNumber: number;
 }
 
 interface WizardSession extends Scenes.WizardSessionData {

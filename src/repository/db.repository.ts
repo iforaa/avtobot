@@ -263,21 +263,24 @@ export class DBRepository {
     }
   }
 
-  async getPhotosByVehicleID(id: number): Promise<string[]> {
+  async getPhotosByVehicleID(id: number, section?: number): Promise<any[]> {
     const query = `
-      SELECT p.photo_url
+      SELECT *
       FROM photos p
       JOIN vehicles v ON p.vehicle_id = v.id
       WHERE v.id = $1
+      ${section !== undefined ? "AND p.section = $2" : ""}
       ORDER BY p.created_at DESC;
     `;
 
     try {
-      const result = await this.dbService.query(query, [id]);
+      // Pass only `id` if section is undefined; otherwise, pass `id` and `section`
+      const params = section !== undefined ? [id, section] : [id];
+      const result = await this.dbService.query(query, params);
 
       if (result.length > 0) {
         // Extract photo URLs from the query result
-        return result.map((row: any) => row.photo_url);
+        return result;
       } else {
         return []; // No photos found for this vehicle
       }
@@ -287,15 +290,19 @@ export class DBRepository {
     }
   }
 
-  async addPhotoToVehicle(filename: string, id: number): Promise<any> {
+  async addPhotoToVehicle(
+    filename: string,
+    id: number,
+    section: number,
+  ): Promise<any> {
     const query = `
-      INSERT INTO photos (vehicle_id, photo_url)
-      VALUES ($1, $2)
+      INSERT INTO photos (vehicle_id, photo_url, section)
+      VALUES ($1, $2, $3)
       RETURNING *;
     `;
 
     try {
-      const result = await this.dbService.query(query, [id, filename]);
+      const result = await this.dbService.query(query, [id, filename, section]);
 
       if (result.length > 0) {
         return result[0]; // Return the inserted photo record

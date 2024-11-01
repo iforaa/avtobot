@@ -133,12 +133,12 @@ export class BotService {
     await this.vehicleRepository.addStarsToVehicle(stars, id);
   }
 
-  async getPhotosOfVehicle(id: number): Promise<string[]> {
-    return await this.vehicleRepository.getPhotosByVehicleID(id);
+  async getPhotosOfVehicle(id: number, section?: number): Promise<any[]> {
+    return await this.vehicleRepository.getPhotosByVehicleID(id, section);
   }
 
-  async addPhotoToVehicle(filename: string, id: number) {
-    await this.vehicleRepository.addPhotoToVehicle(filename, id);
+  async addPhotoToVehicle(filename: string, id: number, section: number) {
+    await this.vehicleRepository.addPhotoToVehicle(filename, id, section);
   }
 
   async downloadFileFromTelegramAndSaveToDatastore(

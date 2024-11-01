@@ -43,7 +43,12 @@ export class EditContentCommand extends Command {
   }
   async displayPhoto(ctx: any) {
     const vehicleID = ctx.session.currentVehicleID;
-    const content = await this.botService.getPhotosOfVehicle(vehicleID); // Returns both photos and videos
+    const content = (
+      await this.botService.getPhotosOfVehicle(
+        vehicleID,
+        ctx.session.photoSectionNumber,
+      )
+    ).map((row: any) => row.photo_url); // Returns both photos and videos
 
     if (content.length === 0) {
       await ctx.reply("Контент отсутствует.");
@@ -103,15 +108,18 @@ export class EditContentCommand extends Command {
             callback_data: isLast ? "disabled" : "next_content_page",
           },
         ],
-        [{ text: "Назад", callback_data: "view_vehicle_photos" }],
+        [{ text: "Назад", callback_data: "view_photos" }],
       ],
     };
   }
 
   async showNextPhoto(ctx: any) {
-    const photos = await this.botService.getPhotosOfVehicle(
-      ctx.session.currentVehicleID,
-    );
+    const photos = (
+      await this.botService.getPhotosOfVehicle(
+        ctx.session.currentVehicleID,
+        ctx.session.photoSectionNumber,
+      )
+    ).map((row: any) => row.photo_url);
     if (ctx.session.currentPhotoIndex < photos.length - 1) {
       const currentContent = photos[ctx.session.currentPhotoIndex];
       const nextContent = photos[ctx.session.currentPhotoIndex + 1];
@@ -136,9 +144,12 @@ export class EditContentCommand extends Command {
 
   async showPreviousPhoto(ctx: any) {
     if (ctx.session.currentPhotoIndex > 0) {
-      const photos = await this.botService.getPhotosOfVehicle(
-        ctx.session.currentVehicleID,
-      );
+      const photos = (
+        await this.botService.getPhotosOfVehicle(
+          ctx.session.currentVehicleID,
+          ctx.session.photoSectionNumber,
+        )
+      ).map((row: any) => row.photo_url);
       const currentContent = photos[ctx.session.currentPhotoIndex];
       const previousContent = photos[ctx.session.currentPhotoIndex - 1];
 
@@ -166,9 +177,12 @@ export class EditContentCommand extends Command {
   }
 
   async deleteCurrentPhoto(ctx: any) {
-    const photos = await this.botService.getPhotosOfVehicle(
-      ctx.session.currentVehicleID,
-    );
+    const photos = (
+      await this.botService.getPhotosOfVehicle(
+        ctx.session.currentVehicleID,
+        ctx.session.photoSectionNumber,
+      )
+    ).map((row: any) => row.photo_url);
     const photoToDelete = photos[ctx.session.currentPhotoIndex];
 
     // Call the botService to delete the photo from your data source
@@ -186,9 +200,8 @@ export class EditContentCommand extends Command {
     if (photos.length > 1) {
       await this.displayPhoto(ctx);
     } else {
-      await ctx.reply("Больше нету.");
       ctx.scene.leave();
-      return ctx.scene.enter("add_vehicle_scene");
+      return ctx.scene.enter("photos_scene");
     }
   }
 }
