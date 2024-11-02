@@ -56,27 +56,20 @@ export class BotService {
     }
   }
 
-  async getVehicleByProvidedData(data: string): Promise<any | null> {
+  async getVehiclesByProvidedData(data: string): Promise<any[]> {
     const urlPattern = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
     const vinPattern = /^[A-HJ-NPR-Z0-9]{17}$/i;
     const chassisPattern = /^[A-HJ-NPR-Z0-9]{9,12}$/i;
 
     if (urlPattern.test(data)) {
-      const vehicle = await this.vehicleRepository.getVehicleByURLOrVin(
+      const vehicles = await this.vehicleRepository.getVehicleByURLOrVin(
         cleanUrl(data),
       );
-      if (vehicle) {
-        return vehicle;
-      } else {
-        return null;
-      }
+
+      return vehicles;
     } else if (vinPattern.test(data) || chassisPattern.test(data)) {
-      const vehicle = await this.vehicleRepository.getVehicleByURLOrVin(data);
-      if (vehicle) {
-        return vehicle;
-      } else {
-        return null;
-      }
+      const vehicles = await this.vehicleRepository.getVehicleByURLOrVin(data);
+      return vehicles;
     } else {
       throw new TypeError("Incorrect input");
     }

@@ -8,6 +8,9 @@ import { MediaGroup } from "telegraf/typings/telegram-types";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 import { ALL_CARS_MENU, ADD_CAR_MENU } from "./start.command";
+import { clearMessages } from "../utils/clearMessages";
+import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
+
 let CLOSE_MENU = "❎ Закрыть";
 
 export class AddVehicleCommand extends Command {
@@ -15,25 +18,9 @@ export class AddVehicleCommand extends Command {
     super(bot, botService);
   }
 
-  async clearMessages(ctx: any) {
-    for (const group of ctx.session.mediaGroupsMessage) {
-      for (const message of group) {
-        try {
-          ctx.deleteMessage(message.message_id);
-        } catch {}
-      }
-    }
-    for (const message of ctx.session.anyMessagesToDelete) {
-      try {
-        ctx.deleteMessage(message.message_id);
-      } catch {}
-    }
-    ctx.session.anyMessagesToDelete = [];
-  }
-
   handle(): void {
     this.bot.action("close_edit_scene", async (ctx) => {
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -58,9 +45,22 @@ export class AddVehicleCommand extends Command {
       ctx.scene.enter("setup_url_vin_scene"),
     );
 
-    this.bot.action("go_to_vehicles_scene", (ctx) =>
-      ctx.scene.enter("my_vehicles_scene"),
-    );
+    this.bot.action("go_to_vehicles_scene", async (ctx) => {
+      if (ctx.session.previouseMessage) {
+        const { reportsMessage, reportsInlineKeyboard } =
+          ctx.session.previouseMessage;
+        ctx.session.previouseMessage = null;
+        await ctx.scene.enter("adding_car_scene");
+        await ctx.replyOrEditMessage(reportsMessage, {
+          reply_markup: {
+            inline_keyboard: reportsInlineKeyboard,
+          },
+          parse_mode: "HTML",
+        });
+      } else {
+        ctx.scene.enter("my_vehicles_scene");
+      }
+    });
     this.bot.action("edit_content", async (ctx) => {
       for (const group of ctx.session.mediaGroupsMessage) {
         for (const message of group)
@@ -100,6 +100,7 @@ export class AddVehicleCommand extends Command {
         const vehicle = await this.botService.getVehicleById(
           ctx.session.currentVehicleID,
         );
+        ctx.session.currentVehicle = vehicle;
 
         const vehicleDesc = vehicle.description;
         let message = constructLinkForVehicle(vehicle);
@@ -134,59 +135,68 @@ export class AddVehicleCommand extends Command {
 
         // message += `Загружено фото: ${photoCount}\n`;
 
+        //
+        //
+        //
+        const inlineKeyboard: InlineKeyboardButton[][] = [[]];
+
+        inlineKeyboard.push([
+          {
+            text: "📷 Фото/Видео",
+            // callback_data: "attach_photos",
+            callback_data: "view_photos",
+          },
+        ]);
+
+        if (ctx.from?.id === vehicle.user_id) {
+          inlineKeyboard.push([
+            { text: "🛠️ Описание", callback_data: "edit_info" },
+            {
+              text: "🆔 URL/VIN",
+              callback_data: "setup_url_vin",
+            },
+          ]);
+
+          inlineKeyboard.push([
+            { text: "🚗 Марка", callback_data: "edit_mark" },
+            {
+              text: "🚘 Модель",
+              callback_data: "edit_model",
+            },
+          ]);
+
+          inlineKeyboard.push([
+            { text: "📅 Год", callback_data: "edit_year" },
+            {
+              text: "🧭 Пробег",
+              callback_data: "edit_mileage",
+            },
+          ]);
+
+          inlineKeyboard.push([
+            {
+              text: "📝 Внешний отчет",
+              callback_data: "attach_remote_report",
+            },
+          ]);
+
+          inlineKeyboard.push([
+            {
+              text: "⭐ Баллы",
+              callback_data: "edit_stars",
+            },
+          ]);
+        }
+
+        inlineKeyboard.push([
+          { text: "↩️ Назад", callback_data: "go_to_vehicles_scene" },
+        ]);
+
         await ctx.replyOrEditMessage(
           message, // New content
           {
             reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "📷 Фото/Видео",
-                    // callback_data: "attach_photos",
-                    callback_data: "view_photos",
-                  },
-                  // {
-                  //   text: "📷 ",
-                  //   callback_data: "view_vehicle_photos",
-                  // },
-                  // { text: "Прикрепить видео", callback_data: "attach_video" },
-                ],
-                [
-                  { text: "🛠️ Описание", callback_data: "edit_info" },
-                  {
-                    text: "🆔 URL/VIN",
-                    callback_data: "setup_url_vin",
-                  },
-                ],
-                [
-                  { text: "🚗 Марка", callback_data: "edit_mark" },
-                  {
-                    text: "🚘 Модель",
-                    callback_data: "edit_model",
-                  },
-                ],
-                [
-                  { text: "📅 Год", callback_data: "edit_year" },
-                  {
-                    text: "🧭 Пробег",
-                    callback_data: "edit_mileage",
-                  },
-                ],
-                [
-                  {
-                    text: "📝 Внешний отчет",
-                    callback_data: "attach_remote_report",
-                  },
-                ],
-                [
-                  {
-                    text: "⭐ Баллы",
-                    callback_data: "edit_stars",
-                  },
-                ],
-
-                [{ text: "↩️ Назад", callback_data: "go_to_vehicles_scene" }],
-              ],
+              inline_keyboard: inlineKeyboard,
             },
             parse_mode: "HTML",
           },
@@ -206,7 +216,7 @@ export class AddVehicleCommand extends Command {
         ctx.deleteMessage();
       } catch {}
 
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -221,7 +231,7 @@ export class AddVehicleCommand extends Command {
       try {
         ctx.deleteMessage();
       } catch {}
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;
@@ -234,7 +244,7 @@ export class AddVehicleCommand extends Command {
       try {
         ctx.deleteMessage();
       } catch {}
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -262,7 +272,7 @@ export class AddVehicleCommand extends Command {
         ctx.deleteMessage();
       } catch {}
 
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -280,7 +290,7 @@ export class AddVehicleCommand extends Command {
       try {
         ctx.deleteMessage();
       } catch {}
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -304,7 +314,7 @@ export class AddVehicleCommand extends Command {
       try {
         ctx.deleteMessage();
       } catch {}
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -329,7 +339,7 @@ export class AddVehicleCommand extends Command {
 
       await this.botService.addMileageToVehicle(mileage, currentVehicleID);
 
-      this.clearMessages(ctx);
+      await clearMessages(ctx);
 
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
@@ -352,7 +362,7 @@ export class AddVehicleCommand extends Command {
 
       await this.botService.addStarsToVehicle(stars, currentVehicleID);
 
-      await this.clearMessages(ctx);
+      await clearMessages(ctx);
       ctx.scene.leave();
       ctx.scene.enter("add_vehicle_scene");
       ctx.wizard.cursor = 1;

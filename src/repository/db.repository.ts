@@ -369,21 +369,33 @@ export class DBRepository {
     }
   }
 
-  async getVehicleByURLOrVin(data: string): Promise<any> {
-    const query = "SELECT * FROM vehicles WHERE url = $1 OR vin = $1";
+  async getVehicleByURLOrVin(data: string): Promise<any[]> {
+    const query = `
+        SELECT
+          vehicles.*,
+          users.username
+        FROM
+          vehicles
+        JOIN
+          users
+        ON
+          vehicles.user_id = users.user_id
+        WHERE
+          vehicles.url = $1 OR vehicles.vin = $1
+      `;
     const result = await this.dbService.query(query, [data]);
 
     if (result === null) {
       console.error("Failed to fetch vehicle from database.");
-      return null;
+      return [];
     }
 
     console.log(result);
 
     if (result.length > 0) {
-      return result[0];
+      return result;
     } else {
-      return null;
+      return [];
     }
   }
 }

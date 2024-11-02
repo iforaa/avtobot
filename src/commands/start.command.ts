@@ -8,9 +8,11 @@ import { cleanUrl } from "../utils/cleanurl";
 import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
+import { clearMessages } from "../utils/clearMessages";
+import { collapseTextChangeRangesAcrossMultipleVersions } from "typescript";
 
-export let ADD_CAR_MENU = "➕ Занести авто";
-export let ALL_CARS_MENU = "🚗 Мои авто";
+export let ADD_CAR_MENU = "➕ Отчет";
+export let ALL_CARS_MENU = "🚗 Мои отчеты";
 
 let CLOSE_MENU = "❎ Закрыть";
 
@@ -100,6 +102,19 @@ export class StartCommand extends Command {
       } catch {}
     });
 
+    this.bot.action(/open_report_(\d+)/, async (ctx) => {
+      const reportIndex = parseInt(ctx.match[1]) + 1; // Extract the vehicle index from callback data
+
+      if (ctx.session.reports && reportIndex <= ctx.session.reports.length) {
+        ctx.session.currentVehicleID = ctx.session.reports[reportIndex - 1].id; // Adjust for 0-based index
+        console.log(`Opening vehicle ${reportIndex}`);
+        ctx.scene.leave();
+        return ctx.scene.enter("add_vehicle_scene");
+      } else {
+        await ctx.reply("Произошла ошибка: Отчет не найден.");
+      }
+    });
+
     this.bot.action(/open_vehicle_(\d+)/, async (ctx) => {
       const vehicleIndex = parseInt(ctx.match[1]) + 1; // Extract the vehicle index from callback data
 
@@ -118,56 +133,201 @@ export class StartCommand extends Command {
     const addVehicleHandler = new Composer<IBotContext>();
     addVehicleHandler.action("close_adding_vehicle_scene", async (ctx) => {
       try {
-        ctx.deleteMessage();
+        await ctx.deleteMessage();
       } catch {}
+      await clearMessages(ctx);
       ctx.scene.leave();
       return ctx.scene.enter("start_scene");
     });
     addVehicleHandler.hears(ADD_CAR_MENU, async (ctx) => {
-      await ctx.reply("Введи URL из объявления или VIN номер:", {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: CLOSE_MENU,
-                callback_data: "close_adding_vehicle_scene",
-              },
+      ctx.session.anyMessagesToDelete.push(
+        await ctx.reply("Введи URL из объявления или VIN номер:", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: CLOSE_MENU,
+                  callback_data: "close_adding_vehicle_scene",
+                },
+              ],
             ],
-          ],
-        },
+          },
+        }),
+      );
+
+      addVehicleHandler.action("create_report_for_vehicle", async (ctx) => {
+        const vehicleID = await this.botService.addVehicleByProvidedData(
+          ctx.session.createVehicleIdentifier,
+          ctx.session.createVehicleUserID,
+        );
+
+        await clearMessages(ctx);
+        ctx.session.currentVehicleID = vehicleID;
+        ctx.session.canBeEditedMessage = await ctx.reply("Загружаем...");
+        ctx.scene.leave();
+        return ctx.scene.enter("add_vehicle_scene");
       });
 
       addVehicleHandler.on("text", async (ctx) => {
         const inputText = ctx.message?.text;
 
         const userId = ctx.from?.id;
+        // const userId = 1111;
         let vehicleID;
 
         try {
-          const vehicle =
-            await this.botService.getVehicleByProvidedData(inputText);
+          await ctx.deleteMessage();
+        } catch {}
 
-          if (!vehicle) {
-            await ctx.reply("Новое авто добавлено!");
-            vehicleID = await this.botService.addVehicleByProvidedData(
-              inputText,
-              userId,
-            );
-          } else {
-            await ctx.reply("Авто уже есть в базе данных.");
-            vehicleID = vehicle.id;
+        await clearMessages(ctx);
+
+        const numberEmojis = [
+          "1️⃣",
+          "2️⃣",
+          "3️⃣",
+          "4️⃣",
+          "5️⃣",
+          "6️⃣",
+          "7️⃣",
+          "8️⃣",
+          "9️⃣",
+          "🔟",
+        ];
+
+        try {
+          const reports =
+            await this.botService.getVehiclesByProvidedData(inputText);
+          ctx.session.reports = reports;
+
+          const reportsPageSize = 5; // Number of reports per page
+          const reportsCurrentPage = ctx.session.reportsCurrentPage || 0; // Default to the first page
+          if (!ctx.session.reportsCurrentPage) {
+            ctx.session.reportsCurrentPage = 0;
           }
 
-          ctx.session.currentVehicleID = vehicleID;
+          const reportsTotalPages = Math.ceil(reports.length / reportsPageSize);
+          ctx.session.createVehicleUserID = userId;
+          ctx.session.createVehicleIdentifier = inputText;
+          if (reports.length == 0) {
+            const reportsMessage = "Отчета на это авто еще нету. Создаем?";
+            const reportsInlineKeyboard = [
+              [
+                {
+                  text: "Да",
+                  callback_data: "create_report_for_vehicle",
+                },
+                {
+                  text: "Отмена",
+                  callback_data: "close_adding_vehicle_scene",
+                },
+              ],
+            ];
+
+            return ctx.session.anyMessagesToDelete.push(
+              await ctx.reply(reportsMessage, {
+                reply_markup: {
+                  inline_keyboard: reportsInlineKeyboard,
+                },
+                parse_mode: "HTML",
+              }),
+            );
+          } else {
+            let reportsMessage = "Отчеты для этого авто:\n\n";
+            const reportsInlineKeyboard: InlineKeyboardButton[][] = [[]];
+
+            // Get the reports for the current page
+            const reportsStart = reportsCurrentPage * reportsPageSize;
+            const reportsEnd = Math.min(
+              reportsStart + reportsPageSize,
+              reports.length,
+            );
+            const reportsOnPage = reports.slice(reportsStart, reportsEnd);
+
+            reportsOnPage.forEach((report, index) => {
+              const reportIndex = reportsStart + index; // Overall index of the report
+
+              reportsMessage += `${numberEmojis[index] || index + 1} `;
+              reportsMessage += `${report.username}`;
+              if (report.user_id === userId) {
+                reportsMessage += `  🔑 Ваш отчет\n`;
+              } else {
+                reportsMessage += `\n\n`;
+              }
+
+              if (
+                reportsInlineKeyboard[reportsInlineKeyboard.length - 1]
+                  .length === 5
+              ) {
+                reportsInlineKeyboard.push([]); // Start a new row
+              }
+
+              // Add a button for the current report
+              reportsInlineKeyboard[reportsInlineKeyboard.length - 1].push({
+                text: `-> ${numberEmojis[index] || index + 1}`,
+                callback_data: `open_report_${reportIndex}`,
+              });
+            });
+
+            // Add "Back 10" and "Next 10" buttons if applicable
+            const reportsNavigationButtons: InlineKeyboardButton[] = [];
+            if (reportsCurrentPage > 0) {
+              reportsNavigationButtons.push({
+                text: "⬅️ Назад",
+                callback_data: "previous_reports_page",
+              });
+            }
+            if (reportsCurrentPage < reportsTotalPages - 1) {
+              reportsNavigationButtons.push({
+                text: "➡️ Вперед",
+                callback_data: "next_reports_page",
+              });
+            }
+
+            if (reportsNavigationButtons.length > 0) {
+              reportsInlineKeyboard.push(reportsNavigationButtons);
+            }
+
+            if (!reports.some((report) => report.user_id === userId)) {
+              reportsInlineKeyboard.push([
+                {
+                  text: "Добавить свой отчет",
+                  callback_data: "create_report_for_vehicle",
+                },
+              ]);
+            }
+
+            // Add a "Cancel" button
+            reportsInlineKeyboard.push([
+              {
+                text: "Отмена",
+                callback_data: "close_adding_vehicle_scene",
+              },
+            ]);
+            ctx.session.previouseMessage = {
+              reportsMessage,
+              reportsInlineKeyboard,
+            };
+
+            return ctx.session.anyMessagesToDelete.push(
+              await ctx.replyOrEditMessage(reportsMessage, {
+                reply_markup: {
+                  inline_keyboard: reportsInlineKeyboard,
+                },
+                parse_mode: "HTML",
+              }),
+            );
+          }
         } catch {
-          return await ctx.reply(
-            "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+          return ctx.session.anyMessagesToDelete.push(
+            ctx.reply(
+              "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+            ),
           );
         }
 
-        ctx.session.canBeEditedMessage = await ctx.reply("Загружаем...");
-        ctx.scene.leave();
-        return ctx.scene.enter("add_vehicle_scene");
+        // ctx.session.canBeEditedMessage = await ctx.reply("Загружаем...");
+        // ctx.scene.leave();
+        // return ctx.scene.enter("add_vehicle_scene");
       });
     });
 
@@ -213,7 +373,7 @@ export class StartCommand extends Command {
       const totalPages = Math.ceil(vehicles.length / pageSize);
 
       if (vehicles.length > 0) {
-        let message = "Информация о ваших машинах:\n\n";
+        let message = "Информация о ваших отчетах:\n\n";
         const numberEmojis = [
           "1️⃣",
           "2️⃣",

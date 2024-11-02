@@ -103,7 +103,7 @@ export class AddPhotoCommand extends Command {
             }
 
             // Add a delay between each batch to avoid hitting rate limits
-            await delay(3500);
+            await delay(2500);
           }
         };
 
@@ -296,17 +296,25 @@ export class AddPhotoCommand extends Command {
           );
           const photosCount = photosInSection.length;
 
-          return [
-            {
+          const buttons = [];
+
+          if (
+            ctx.session.currentVehicle &&
+            ctx.session.currentVehicle.user_id === ctx.from?.id
+          ) {
+            buttons.push({
               text: `⬆️ ${name}`,
               callback_data: `upload_photos_section_${section}`,
-            },
-            {
-              text: photosCount > 0 ? `👁️ ${name} (${photosCount})` : `🔴`,
-              callback_data:
-                photosCount > 0 ? `show_photos_section_${section}` : `___`,
-            },
-          ];
+            });
+          }
+
+          buttons.push({
+            text: photosCount > 0 ? `👁️ ${name} (${photosCount})` : `🔴`,
+            callback_data:
+              photosCount > 0 ? `show_photos_section_${section}` : `___`,
+          });
+
+          return buttons;
         });
 
         ctx.session.anyMessagesToDelete.push(

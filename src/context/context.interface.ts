@@ -6,15 +6,25 @@ import { PhotoSection } from "../utils/photoSection";
 export interface SessionData extends Scenes.WizardSession<WizardSession> {
   passedValidation: boolean;
   // currentVehicleUrl: string;
+  //
+  reportsCurrentPage: number;
+
   currentPage: number;
+  currentVehicle: any;
   currentVehicleID: number;
   currentPhotoIndex: number;
   vehicles: any[];
+  reports: any[];
   canBeEditedMessage?: any;
   mediaGroupsMessage: any[];
   anyMessagesToDelete: any[];
 
+  createVehicleUserID: number;
+  createVehicleIdentifier: string;
+
   photoSectionNumber: number;
+
+  previouseMessage?: any;
 }
 
 interface WizardSession extends Scenes.WizardSessionData {
