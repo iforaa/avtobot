@@ -14,6 +14,7 @@ import { AddPhotoCommand } from "./src/commands/add.photos.command";
 import { DatastoreService } from "./src/services/datastore.service";
 import { EditContentCommand } from "./src/commands/edit.content.command";
 import { SearchCarsCommand } from "./src/commands/search.cars.command";
+import { ProfileCommand } from "./src/commands/profile.command";
 
 class Bot {
   bot: Telegraf<IBotContext>;
@@ -117,6 +118,7 @@ class Bot {
       new AddPhotoCommand(this.bot, this.botService),
       new EditContentCommand(this.bot, this.botService),
       new SearchCarsCommand(this.bot, this.botService),
+      new ProfileCommand(this.bot, this.botService),
     ];
 
     const scenes: Scenes.WizardScene<IBotContext>[] = [];

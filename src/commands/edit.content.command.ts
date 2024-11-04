@@ -58,7 +58,7 @@ export class EditContentCommand extends Command {
     const currentContent = content[ctx.session.currentPhotoIndex];
     let mediaUrl = currentContent.replace(
       /(photos|videos)\//,
-      "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+      this.botService.datastoreURLFile(),
     );
 
     let captionText = `${ctx.session.currentPhotoIndex + 1} из ${content.length}`;

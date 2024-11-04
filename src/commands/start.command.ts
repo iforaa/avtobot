@@ -10,9 +10,12 @@ import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 import { clearMessages } from "../utils/clearMessages";
 import { collapseTextChangeRangesAcrossMultipleVersions } from "typescript";
-
-export let ADD_CAR_MENU = "➕ Отчет";
-export let ALL_CARS_MENU = "🚗 Мои отчеты";
+import { mainMenu } from "../utils/menuKeyboard";
+import {
+  ADD_CAR_MENU,
+  ALL_CARS_MENU,
+  PROFILE_MENU,
+} from "../utils/menuKeyboard";
 
 let CLOSE_MENU = "❎ Закрыть";
 
@@ -23,32 +26,51 @@ export class StartCommand extends Command {
 
   handle(): void {
     this.bot.start(async (ctx) => {
-      console.log(ctx.session);
       ctx.session.canBeEditedMessage = null;
-      ctx.reply(
-        "Привет! Это специализированный маркетплейс для автоподборщиков. Мы закрытый клуб для своих, чтобы присоедениться, тебе нужно ввести пригласительный код:",
-      );
 
       const userId = ctx.from?.id;
+      // const userId = 1;
+
+      const username = ctx.from?.username || "Unknown";
       const user = await this.botService.getUser(userId);
       console.log(user);
       if (user.length == 0) {
-        this.botService.addUser(userId);
-      }
-
-      if (ctx.session.passedValidation === false) {
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply(
+            "Привет! Это маркетплейс для автоподборщиков. Мы закрытый клуб для своих, чтобы присоедениться, тебе нужно ввести 2 пригласительный кода. Введи их через пробел:",
+          ),
+        );
         this.bot.on("text", async (ctx) => {
-          const inviteCode = ctx.message?.text;
-          if (inviteCode === "123") {
-            await ctx.reply("Верный код. Добро пожаловать!");
-            ctx.session.passedValidation = true;
-            return ctx.scene.enter("start_scene");
+          const codes = ctx.message.text.trim();
+          if (codes.split(" ").length === 2) {
+            const [code1, code2] = codes.split(" ");
+
+            if (await this.botService.isRedeemable(codes)) {
+              await this.botService.addUser(userId, username);
+              const isRedeemed = await this.botService.redeemInvite(
+                codes,
+                userId,
+              );
+
+              ctx.session.anyMessagesToDelete.push(
+                await ctx.reply("Добро пожаловать в клуб! 🎉"),
+              );
+
+              return ctx.scene.enter("start_scene");
+            } else {
+              ctx.session.anyMessagesToDelete.push(
+                await ctx.reply(
+                  "Один или оба кода неверны или уже использованы. Попробуй еще раз.",
+                ),
+              );
+            }
           } else {
-            await ctx.reply("Неверный код. Попробуй еще раз.");
+            ctx.session.anyMessagesToDelete.push(
+              await ctx.reply("Введи два кода, разделенные пробелом."),
+            );
           }
         });
       } else {
-        await ctx.reply("Ты уже валидирован!");
         return ctx.scene.enter("start_scene");
       }
     });
@@ -57,11 +79,21 @@ export class StartCommand extends Command {
       return ctx.scene.enter("start_scene");
     });
 
+    this.bot.hears(PROFILE_MENU, async (ctx) => {
+      ctx.scene.leave();
+      try {
+        ctx.deleteMessage();
+      } catch {}
+      await clearMessages(ctx);
+      return ctx.scene.enter("profile_scene");
+    });
+
     this.bot.hears(ADD_CAR_MENU, async (ctx) => {
       ctx.scene.leave();
       try {
         ctx.deleteMessage();
       } catch {}
+      await clearMessages(ctx);
       return ctx.scene.enter("adding_car_scene");
     });
     this.bot.hears(ALL_CARS_MENU, async (ctx) => {
@@ -69,6 +101,7 @@ export class StartCommand extends Command {
       try {
         ctx.deleteMessage();
       } catch {}
+      await clearMessages(ctx);
       return ctx.scene.enter("my_vehicles_scene");
     });
     // this.bot.action("my_vehicles", async (ctx) => {
@@ -339,19 +372,7 @@ export class StartCommand extends Command {
     const startScene = new Scenes.WizardScene<IBotContext>(
       "start_scene",
       async (ctx) => {
-        await ctx.replyOrEditMessage("Главное Меню", {
-          reply_markup: {
-            keyboard: [
-              [
-                {
-                  text: ALL_CARS_MENU,
-                },
-                { text: ADD_CAR_MENU },
-              ],
-            ],
-            resize_keyboard: true,
-          },
-        });
+        await mainMenu(ctx);
         ctx.scene.leave();
       },
     );

@@ -9,8 +9,61 @@ export class BotService {
     private readonly datastoreService: DatastoreService,
   ) {}
 
-  async addUser(userID: number) {
-    this.vehicleRepository.addUser(userID);
+  datastoreURLFile(): string {
+    return this.datastoreService.datastoreURLFile;
+  }
+
+  private generateInviteCode(): string {
+    return Math.floor(1000000000 + Math.random() * 9000000000).toString(); // Example: '5482392847'
+  }
+
+  // Generate or fetch an invite code for an inviter
+  async generateOrFetchInvite(inviterUserId: number): Promise<string> {
+    let invite =
+      await this.vehicleRepository.getActiveInviteByInviter(inviterUserId);
+
+    if (!invite) {
+      const inviteCode = this.generateInviteCode();
+      await this.vehicleRepository.saveInvite(inviterUserId, inviteCode);
+      return inviteCode;
+    }
+
+    return invite.code;
+  }
+
+  async isRedeemable(codes: string): Promise<boolean> {
+    const [code1, code2] = codes.split(" ");
+    if (!code1 || !code2) return false;
+    const invite1 = await this.vehicleRepository.getInviteByCode(code1);
+    const invite2 = await this.vehicleRepository.getInviteByCode(code2);
+
+    if (invite1 && invite2 && !invite1.redeemed_at && !invite2.redeemed_at) {
+      return true;
+    }
+    return false;
+  }
+
+  // Redeem two invite codes for a new user
+  async redeemInvite(codes: string, inviteeUserId: number): Promise<boolean> {
+    const [code1, code2] = codes.split(" ");
+
+    if (!code1 || !code2) return false;
+
+    const invite1 = await this.vehicleRepository.getInviteByCode(code1);
+    const invite2 = await this.vehicleRepository.getInviteByCode(code2);
+
+    if (invite1 && invite2 && !invite1.redeemed_at && !invite2.redeemed_at) {
+      // Redeem both invites
+      await this.vehicleRepository.redeemInvite(code1, inviteeUserId);
+      await this.vehicleRepository.redeemInvite(code2, inviteeUserId);
+      return true;
+    }
+
+    return false;
+  }
+
+  async addUser(userID: number, username: string) {
+    this.vehicleRepository.addUser(userID, username);
   }
 
   async getUser(userID: number): Promise<any[]> {

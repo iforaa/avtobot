@@ -7,9 +7,9 @@ import { WizardContext } from "telegraf/typings/scenes";
 // import { downloadAndSaveFile } from "../utils/downloadAndSaveFile";
 import { URL } from "url";
 import { uploadUserPhotos } from "../utils/uploadUserPhotos";
-import { ALL_CARS_MENU, ADD_CAR_MENU } from "./start.command";
 import { MediaGroup } from "telegraf/typings/telegram-types";
 import { PhotoSection } from "../utils/photoSection";
+import { mainMenu } from "../utils/menuKeyboard";
 
 export class AddPhotoCommand extends Command {
   constructor(bot: Telegraf<IBotContext>, botService: BotService) {
@@ -83,7 +83,7 @@ export class AddPhotoCommand extends Command {
             const mediaGroup: MediaGroup = chunk.map((photo) => {
               let media = photo.replace(
                 "photos/",
-                "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+                this.botService.datastoreURLFile(),
               );
               media += "/";
               media += "photo";
@@ -113,7 +113,7 @@ export class AddPhotoCommand extends Command {
           .map((video, index) => {
             let url = video.replace(
               "videos/",
-              "https://avtopodborbot.igor-n-kuz8044.workers.dev/download/",
+              this.botService.datastoreURLFile(),
             );
             url += "/";
             url += "video";
@@ -182,19 +182,7 @@ export class AddPhotoCommand extends Command {
         //   await ctx.deleteMessage();
         // } catch {}
         await this.clearMessages(ctx);
-        await ctx.reply("🚗🚗🚗", {
-          reply_markup: {
-            keyboard: [
-              [
-                {
-                  text: ALL_CARS_MENU,
-                },
-                { text: ADD_CAR_MENU },
-              ],
-            ],
-            resize_keyboard: true,
-          },
-        });
+        await mainMenu(ctx);
 
         await ctx.scene.leave();
         return await ctx.scene.enter("photos_scene");

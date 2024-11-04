@@ -2,7 +2,11 @@ import axios from "axios";
 import FormData from "form-data";
 
 export class DatastoreService {
-  constructor(private readonly datastoreURL: string) {}
+  datastoreURLFile: string;
+
+  constructor(private readonly datastoreURL: string) {
+    this.datastoreURLFile = `${this.datastoreURL}/download/`;
+  }
 
   // Method to handle file upload
   async uploadFile(

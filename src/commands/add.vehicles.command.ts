@@ -7,7 +7,6 @@ import { WizardContext } from "telegraf/typings/scenes";
 import { MediaGroup } from "telegraf/typings/telegram-types";
 import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
-import { ALL_CARS_MENU, ADD_CAR_MENU } from "./start.command";
 import { clearMessages } from "../utils/clearMessages";
 import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 

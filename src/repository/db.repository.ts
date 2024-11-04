@@ -3,11 +3,49 @@ import { parseURLDetails } from "../utils/parseUrlDetails";
 
 export class DBRepository {
   constructor(private readonly dbService: DbService) {}
+  async saveInvite(inviterUserId: number, code: string) {
+    const query = `
+      INSERT INTO invites (inviter_user_id, code, created_at)
+      VALUES ($1, $2, NOW())
+      RETURNING code;
+    `;
+    const result = await this.dbService.query(query, [inviterUserId, code]);
+    return result[0].code;
+  }
 
-  async addUser(userID: number) {
+  async getActiveInviteByInviter(inviterUserId: number) {
+    const query = `
+      SELECT code FROM invites
+      WHERE inviter_user_id = $1 AND redeemed_at IS NULL
+      ORDER BY created_at DESC LIMIT 1;
+    `;
+    const result = await this.dbService.query(query, [inviterUserId]);
+    return result[0] || null;
+  }
+
+  async getInviteByCode(code: string) {
+    const query = `
+      SELECT * FROM invites WHERE code = $1;
+    `;
+    const result = await this.dbService.query(query, [code]);
+    return result[0] || null;
+  }
+
+  async redeemInvite(code: string, inviteeUserId: number) {
+    const query = `
+      UPDATE invites
+      SET invitee_user_id = $1, redeemed_at = NOW()
+      WHERE code = $2 AND redeemed_at IS NULL
+      RETURNING code;
+    `;
+    const result = await this.dbService.query(query, [inviteeUserId, code]);
+    return result.length > 0;
+  }
+
+  async addUser(userID: number, username: string) {
     const query =
       "INSERT INTO users (username, user_id) VALUES ($1, $2) RETURNING id";
-    const result = await this.dbService.query(query, ["_", userID]);
+    const result = await this.dbService.query(query, [username, userID]);
     return result.id;
   }
 
