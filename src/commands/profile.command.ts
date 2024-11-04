@@ -31,7 +31,7 @@ export class ProfileCommand extends Command {
       async (ctx) => {
         ctx.session.anyMessagesToDelete.push(
           await ctx.reply(
-            "Это твой профиль. Тут сейчес пустовато, но потом будет много чего",
+            "Это твой профиль. Тут сейчас пустовато, но потом будет много чего",
             {
               reply_markup: {
                 inline_keyboard: [
