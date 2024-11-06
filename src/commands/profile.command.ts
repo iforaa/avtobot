@@ -14,7 +14,7 @@ export class ProfileCommand extends Command {
     this.bot.action("generate_invite", async (ctx) => {
       ctx.session.anyMessagesToDelete.push(
         await ctx.reply(
-          "Поделись этим пригласительным только с проверенным человеком",
+          "Поделись этим пригласительным только с автоподборщиком",
         ),
       );
       ctx.session.anyMessagesToDelete.push(
@@ -22,6 +22,7 @@ export class ProfileCommand extends Command {
           `${await this.botService.generateOrFetchInvite(ctx.from.id)}`,
         ),
       );
+      return ctx.scene.leave();
     });
   }
 
@@ -47,7 +48,7 @@ export class ProfileCommand extends Command {
           ),
         );
 
-        ctx.scene.leave();
+        return ctx.scene.leave();
       },
     );
 

@@ -27,10 +27,18 @@ export class StartCommand extends Command {
   handle(): void {
     this.bot.start(async (ctx) => {
       ctx.session.canBeEditedMessage = null;
+      ctx.session.anyMessagesToDelete = [];
+      ctx.session.mediaGroupsMessage;
+      ctx.session.vehicles = [];
+      ctx.session.reports = [];
+      ctx.session.reportsCurrentPage = 0;
+      ctx.session.currentPage = 0;
+      ctx.session.currentVehicle = 0;
+      ctx.session.currentVehicleID = 0;
+      ctx.session.currentPhotoIndex = 0;
 
-      const userId = ctx.from?.id;
-      // const userId = 1;
-
+      let userId = ctx.from?.id;
+      userId = 0;
       const username = ctx.from?.username || "Unknown";
       const user = await this.botService.getUser(userId);
       console.log(user);

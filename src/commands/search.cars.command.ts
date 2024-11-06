@@ -126,6 +126,7 @@ export class SearchCarsCommand extends Command {
         const userId = ctx.from!.id; // Access the user's Telegram ID
         const vehicles: any[] =
           await this.botService.getVehiclesByUserId(userId);
+
         const uniqueMarks = Array.from(
           new Set(vehicles.map((vehicle) => vehicle.mark?.toLowerCase())),
         ).filter(Boolean); // Filter out null or empty marks
@@ -133,18 +134,19 @@ export class SearchCarsCommand extends Command {
         // Create a message listing all marks with numbered emojis
         let message = "<b>Выберите марку:</b>\n\n";
         uniqueMarks.forEach((mark, index) => {
-          message += `${this.emojiNumbers[index]} ${mark}\n`;
+          message += `${index + 1}) ${mark}\n`;
         });
 
         // Create an inline keyboard with buttons for each mark, max 5 buttons per row
         const inlineKeyboard: InlineKeyboardButton[][] = [];
         for (let i = 0; i < uniqueMarks.length; i += 5) {
           const row = uniqueMarks.slice(i, i + 5).map((mark, index) => ({
-            text: this.emojiNumbers[i + index],
+            text: this.emojiNumbers[i + index] || `${i + index + 1}`, // Fallback to a plain number if out of emoji range
             callback_data: `select_mark_${mark}`,
           }));
           inlineKeyboard.push(row);
         }
+        console.log(inlineKeyboard);
 
         // Add a "back" button at the bottom
         inlineKeyboard.push([

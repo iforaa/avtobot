@@ -4,9 +4,6 @@ import { SessionContext } from "telegraf/typings/session";
 import { PhotoSection } from "../utils/photoSection";
 
 export interface SessionData extends Scenes.WizardSession<WizardSession> {
-  passedValidation: boolean;
-  // currentVehicleUrl: string;
-  //
   reportsCurrentPage: number;
 
   currentPage: number;
