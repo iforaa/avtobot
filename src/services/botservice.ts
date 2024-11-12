@@ -2,6 +2,10 @@ import { DBRepository } from "../repository/db.repository";
 import { cleanUrl } from "../utils/cleanurl";
 import { DatastoreService } from "./datastore.service";
 import axios from "axios";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { compressVideo } from "../utils/videoCompress";
+import * as os from "os";
 
 export class BotService {
   constructor(
@@ -187,44 +191,76 @@ export class BotService {
     await this.vehicleRepository.addPhotoToVehicle(filename, id, section);
   }
 
+  sanitizeFilename(filename: string): string {
+    return filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  }
+
   async downloadFileFromTelegramAndSaveToDatastore(
     fileLink: URL,
     filename: string,
     type: string,
-  ) {
+  ): Promise<string> {
     try {
+      let fileBuffer: Buffer;
+
       if (fileLink.toString().startsWith("file://")) {
         // Remove the 'file://' and 'localhost' from the URL, and extract the local path
         const filePath = fileLink.pathname;
 
-        // On macOS (Darwin), the filePath will start with '/', which is correct for fs
-        const fs = require("fs").promises;
-        const photo = await fs.readFile(filePath); // Read the file directly from the disk
-        const dataStoreFilename = await this.datastoreService.uploadFile(
-          photo,
-          filename,
-          type,
-        );
-        return dataStoreFilename;
+        // Read the file directly from the disk
+        fileBuffer = await fs.readFile(filePath);
       } else {
-        const response = await axios.get(fileLink.toString(), {
+        // Download the file using axios
+        const response = await axios.get<Buffer>(fileLink.toString(), {
           responseType: "arraybuffer",
         });
 
         if (response.status === 200) {
-          const photo = Buffer.from(response.data);
-          const dataStoreFilename = await this.datastoreService.uploadFile(
-            photo,
-            filename,
-            type,
-          );
-          return dataStoreFilename;
+          fileBuffer = response.data;
         } else {
           throw new Error(`Failed to download file: ${response.statusText}`);
         }
       }
+
+      // Handle video compression if it's a video
+      if (type === "video") {
+        const sanitizedFilename = this.sanitizeFilename(filename);
+        const extension = ".mp4";
+        const tempDir = os.tmpdir(); // System temporary directory
+        const tempInputPath = path.join(
+          tempDir,
+          `temp_${sanitizedFilename}${extension}`,
+        );
+        const tempOutputPath = path.join(
+          tempDir,
+          `compressed_${sanitizedFilename}${extension}`,
+        );
+
+        // Write the file to disk temporarily
+        await fs.writeFile(tempInputPath, fileBuffer);
+
+        // Compress the video
+        await compressVideo(tempInputPath, tempOutputPath);
+
+        // Read the compressed file back into a buffer
+        fileBuffer = await fs.readFile(tempOutputPath);
+
+        // Clean up temporary files
+        await fs.unlink(tempInputPath);
+        await fs.unlink(tempOutputPath);
+      }
+
+      // Upload the file to the datastore
+      const dataStoreFilename = await this.datastoreService.uploadFile(
+        fileBuffer,
+        filename,
+        type,
+      );
+      return dataStoreFilename;
     } catch (error) {
-      throw new Error(`Error downloading file: ${error}`);
+      throw new Error(
+        `downloadFileFromTelegramAndSaveToDatastore: ${(error as Error).message}`,
+      );
     }
   }
 }

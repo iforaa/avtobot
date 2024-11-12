@@ -28,7 +28,7 @@ export class StartCommand extends Command {
     this.bot.start(async (ctx) => {
       ctx.session.canBeEditedMessage = null;
       ctx.session.anyMessagesToDelete = [];
-      ctx.session.mediaGroupsMessage;
+      ctx.session.mediaGroupsMessage = [];
       ctx.session.vehicles = [];
       ctx.session.reports = [];
       ctx.session.reportsCurrentPage = 0;
