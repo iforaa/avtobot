@@ -21,8 +21,8 @@ export async function compressVideo(
         .outputOptions(["-crf 28", "-preset fast"]);
 
       // Conditionally scale the video if height is greater than 720 or already small
-      if (height && height > 480) {
-        command.size("?x480"); // Scale down to a height of 720 while maintaining aspect ratio
+      if (height && height > 720) {
+        command.size("?x720"); // Scale down to a height of 720 while maintaining aspect ratio
       } else {
         console.log("Skipping resizing: video is already small.");
       }
