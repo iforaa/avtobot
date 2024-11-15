@@ -359,16 +359,16 @@ export class StartCommand extends Command {
             );
           }
         } catch {
-          return ctx.session.anyMessagesToDelete.push(
-            ctx.reply(
-              "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
-            ),
-          );
+          ctx.scene.leave();
+          // return ctx.session.anyMessagesToDelete.push(
+          //   ctx.reply(
+          //     "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+          //   ),
+          // );
+          return ctx.scene.enter("start_scene");
         }
 
         // ctx.session.canBeEditedMessage = await ctx.reply("Загружаем...");
-        // ctx.scene.leave();
-        // return ctx.scene.enter("add_vehicle_scene");
       });
     });
 

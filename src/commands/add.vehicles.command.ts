@@ -260,12 +260,23 @@ export class AddVehicleCommand extends Command {
         try {
           ctx.deleteMessage();
         } catch {}
-        ctx.session.anyMessagesToDelete.push(
+        return ctx.session.anyMessagesToDelete.push(
           await ctx.reply(
             "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: CLOSE_MENU,
+                      callback_data: "close_edit_scene",
+                    },
+                  ],
+                ],
+              },
+            },
           ),
         );
-        return;
       }
       try {
         ctx.deleteMessage();
