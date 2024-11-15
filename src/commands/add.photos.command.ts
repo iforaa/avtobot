@@ -228,24 +228,27 @@ export class AddPhotoCommand extends Command {
         //   await ctx.deleteMessage();
         // } catch {}
         ctx.session.anyMessagesToDelete.push(
-          await ctx.reply("Присылай фото или видео", {
-            reply_markup: {
-              keyboard: [
-                [
-                  {
-                    text: "Жми, когда все загрузится",
-                  },
+          await ctx.reply(
+            "Присылай фото или видео. Мы сжимаем видео, и это может занять несколько минут",
+            {
+              reply_markup: {
+                keyboard: [
+                  [
+                    {
+                      text: "Жми, когда все загрузится",
+                    },
+                  ],
+                  [
+                    {
+                      text: "Жми, для возврата назад",
+                    },
+                  ],
                 ],
-                [
-                  {
-                    text: "Жми, для возврата назад",
-                  },
-                ],
-              ],
-              resize_keyboard: true,
-              one_time_keyboard: true,
+                resize_keyboard: true,
+                one_time_keyboard: true,
+              },
             },
-          }),
+          ),
         );
         return ctx.wizard.next();
       },

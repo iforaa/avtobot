@@ -38,7 +38,6 @@ export class StartCommand extends Command {
       ctx.session.currentPhotoIndex = 0;
 
       let userId = ctx.from?.id;
-      userId = 0;
       const username = ctx.from?.username || "Unknown";
       const user = await this.botService.getUser(userId);
       console.log(user);
