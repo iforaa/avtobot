@@ -234,138 +234,148 @@ export class StartCommand extends Command {
           "9️⃣",
           "🔟",
         ];
-
+        let reports;
         try {
-          const reports =
-            await this.botService.getVehiclesByProvidedData(inputText);
+          reports = await this.botService.getVehiclesByProvidedData(inputText);
           ctx.session.reports = reports;
-
-          const reportsPageSize = 5; // Number of reports per page
-          const reportsCurrentPage = ctx.session.reportsCurrentPage || 0; // Default to the first page
-          if (!ctx.session.reportsCurrentPage) {
-            ctx.session.reportsCurrentPage = 0;
-          }
-
-          const reportsTotalPages = Math.ceil(reports.length / reportsPageSize);
-          ctx.session.createVehicleUserID = userId;
-          ctx.session.createVehicleIdentifier = inputText;
-          if (reports.length == 0) {
-            const reportsMessage = "Отчета на это авто еще нету. Создаем?";
-            const reportsInlineKeyboard = [
-              [
-                {
-                  text: "Да",
-                  callback_data: "create_report_for_vehicle",
-                },
-                {
-                  text: "Отмена",
-                  callback_data: "close_adding_vehicle_scene",
-                },
-              ],
-            ];
-
-            return ctx.session.anyMessagesToDelete.push(
-              await ctx.reply(reportsMessage, {
+        } catch {
+          // ctx.scene.leave();
+          return ctx.session.anyMessagesToDelete.push(
+            ctx.reply(
+              "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
+              {
                 reply_markup: {
-                  inline_keyboard: reportsInlineKeyboard,
+                  inline_keyboard: [
+                    [
+                      {
+                        text: CLOSE_MENU,
+                        callback_data: "close_adding_vehicle_scene",
+                      },
+                    ],
+                  ],
                 },
-                parse_mode: "HTML",
-              }),
-            );
-          } else {
-            let reportsMessage = "Отчеты для этого авто:\n\n";
-            const reportsInlineKeyboard: InlineKeyboardButton[][] = [[]];
+              },
+            ),
+          );
+          // return ctx.scene.enter("start_scene");
+        }
+        const reportsPageSize = 5; // Number of reports per page
+        const reportsCurrentPage = ctx.session.reportsCurrentPage || 0; // Default to the first page
+        if (!ctx.session.reportsCurrentPage) {
+          ctx.session.reportsCurrentPage = 0;
+        }
 
-            // Get the reports for the current page
-            const reportsStart = reportsCurrentPage * reportsPageSize;
-            const reportsEnd = Math.min(
-              reportsStart + reportsPageSize,
-              reports.length,
-            );
-            const reportsOnPage = reports.slice(reportsStart, reportsEnd);
-
-            reportsOnPage.forEach((report, index) => {
-              const reportIndex = reportsStart + index; // Overall index of the report
-
-              reportsMessage += `${numberEmojis[index] || index + 1} `;
-              reportsMessage += `${report.username}`;
-              if (report.user_id === userId) {
-                reportsMessage += `  🔑 Ваш отчет\n`;
-              } else {
-                reportsMessage += `\n\n`;
-              }
-
-              if (
-                reportsInlineKeyboard[reportsInlineKeyboard.length - 1]
-                  .length === 5
-              ) {
-                reportsInlineKeyboard.push([]); // Start a new row
-              }
-
-              // Add a button for the current report
-              reportsInlineKeyboard[reportsInlineKeyboard.length - 1].push({
-                text: `-> ${numberEmojis[index] || index + 1}`,
-                callback_data: `open_report_${reportIndex}`,
-              });
-            });
-
-            // Add "Back 10" and "Next 10" buttons if applicable
-            const reportsNavigationButtons: InlineKeyboardButton[] = [];
-            if (reportsCurrentPage > 0) {
-              reportsNavigationButtons.push({
-                text: "⬅️ Назад",
-                callback_data: "previous_reports_page",
-              });
-            }
-            if (reportsCurrentPage < reportsTotalPages - 1) {
-              reportsNavigationButtons.push({
-                text: "➡️ Вперед",
-                callback_data: "next_reports_page",
-              });
-            }
-
-            if (reportsNavigationButtons.length > 0) {
-              reportsInlineKeyboard.push(reportsNavigationButtons);
-            }
-
-            if (!reports.some((report) => report.user_id === userId)) {
-              reportsInlineKeyboard.push([
-                {
-                  text: "Добавить свой отчет",
-                  callback_data: "create_report_for_vehicle",
-                },
-              ]);
-            }
-
-            // Add a "Cancel" button
-            reportsInlineKeyboard.push([
+        const reportsTotalPages = Math.ceil(reports.length / reportsPageSize);
+        ctx.session.createVehicleUserID = userId;
+        ctx.session.createVehicleIdentifier = inputText;
+        if (reports.length == 0) {
+          const reportsMessage = "Отчета на это авто еще нету. Создаем?";
+          const reportsInlineKeyboard = [
+            [
+              {
+                text: "Да",
+                callback_data: "create_report_for_vehicle",
+              },
               {
                 text: "Отмена",
                 callback_data: "close_adding_vehicle_scene",
               },
-            ]);
-            ctx.session.previouseMessage = {
-              reportsMessage,
-              reportsInlineKeyboard,
-            };
+            ],
+          ];
 
-            return ctx.session.anyMessagesToDelete.push(
-              await ctx.replyOrEditMessage(reportsMessage, {
-                reply_markup: {
-                  inline_keyboard: reportsInlineKeyboard,
-                },
-                parse_mode: "HTML",
-              }),
-            );
+          return ctx.session.anyMessagesToDelete.push(
+            await ctx.reply(reportsMessage, {
+              reply_markup: {
+                inline_keyboard: reportsInlineKeyboard,
+              },
+              parse_mode: "HTML",
+            }),
+          );
+        } else {
+          let reportsMessage = "Отчеты для этого авто:\n\n";
+          const reportsInlineKeyboard: InlineKeyboardButton[][] = [[]];
+
+          // Get the reports for the current page
+          const reportsStart = reportsCurrentPage * reportsPageSize;
+          const reportsEnd = Math.min(
+            reportsStart + reportsPageSize,
+            reports.length,
+          );
+          const reportsOnPage = reports.slice(reportsStart, reportsEnd);
+
+          reportsOnPage.forEach((report, index) => {
+            const reportIndex = reportsStart + index; // Overall index of the report
+
+            reportsMessage += `${numberEmojis[index] || index + 1} `;
+            reportsMessage += `${report.username}`;
+            if (report.user_id === userId) {
+              reportsMessage += `  🔑 Ваш отчет\n`;
+            } else {
+              reportsMessage += `\n\n`;
+            }
+
+            if (
+              reportsInlineKeyboard[reportsInlineKeyboard.length - 1].length ===
+              5
+            ) {
+              reportsInlineKeyboard.push([]); // Start a new row
+            }
+
+            // Add a button for the current report
+            reportsInlineKeyboard[reportsInlineKeyboard.length - 1].push({
+              text: `-> ${numberEmojis[index] || index + 1}`,
+              callback_data: `open_report_${reportIndex}`,
+            });
+          });
+
+          // Add "Back 10" and "Next 10" buttons if applicable
+          const reportsNavigationButtons: InlineKeyboardButton[] = [];
+          if (reportsCurrentPage > 0) {
+            reportsNavigationButtons.push({
+              text: "⬅️ Назад",
+              callback_data: "previous_reports_page",
+            });
           }
-        } catch {
-          ctx.scene.leave();
-          // return ctx.session.anyMessagesToDelete.push(
-          //   ctx.reply(
-          //     "Введён некорректный URL, VIN или номер кузова. Попробуй ещё раз.",
-          //   ),
-          // );
-          return ctx.scene.enter("start_scene");
+          if (reportsCurrentPage < reportsTotalPages - 1) {
+            reportsNavigationButtons.push({
+              text: "➡️ Вперед",
+              callback_data: "next_reports_page",
+            });
+          }
+
+          if (reportsNavigationButtons.length > 0) {
+            reportsInlineKeyboard.push(reportsNavigationButtons);
+          }
+
+          if (!reports.some((report) => report.user_id === userId)) {
+            reportsInlineKeyboard.push([
+              {
+                text: "Добавить свой отчет",
+                callback_data: "create_report_for_vehicle",
+              },
+            ]);
+          }
+
+          // Add a "Cancel" button
+          reportsInlineKeyboard.push([
+            {
+              text: "Отмена",
+              callback_data: "close_adding_vehicle_scene",
+            },
+          ]);
+          ctx.session.previouseMessage = {
+            reportsMessage,
+            reportsInlineKeyboard,
+          };
+
+          return ctx.session.anyMessagesToDelete.push(
+            await ctx.replyOrEditMessage(reportsMessage, {
+              reply_markup: {
+                inline_keyboard: reportsInlineKeyboard,
+              },
+              parse_mode: "HTML",
+            }),
+          );
         }
 
         // ctx.session.canBeEditedMessage = await ctx.reply("Загружаем...");
