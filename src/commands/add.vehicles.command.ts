@@ -9,7 +9,7 @@ import { constructLinkForVehicle } from "../utils/parseUrlDetails";
 import { dateFormatter } from "../utils/dateFormatter";
 import { clearMessages } from "../utils/clearMessages";
 import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
-
+import { PhotoSection } from "../utils/photoSection";
 let CLOSE_MENU = "❎ Закрыть";
 
 export class AddVehicleCommand extends Command {
@@ -194,7 +194,10 @@ export class AddVehicleCommand extends Command {
         ]);
 
         const allPhotos = (
-          await this.botService.getPhotosOfVehicle(vehicle.id)
+          await this.botService.getPhotosOfVehicle(
+            vehicle.id,
+            PhotoSection.Kuzov,
+          )
         ).filter((photo) => photo.photo_url.includes("photos/"));
 
         if (allPhotos.length > 0) {
@@ -203,29 +206,16 @@ export class AddVehicleCommand extends Command {
               "photos/",
               this.botService.datastoreURLFile(),
             ) + "/photo";
-
-          ctx.session.anyMessagesToDelete.push(
-            await ctx.replyWithPhoto(photo, {
-              caption: message,
-              parse_mode: "HTML",
-              reply_markup: {
-                inline_keyboard: inlineKeyboard, // Your inline keyboard
-              },
-            }),
-          );
-        } else {
-          ctx.session.anyMessagesToDelete.push(
-            await ctx.reply(
-              message, // New content
-              {
-                reply_markup: {
-                  inline_keyboard: inlineKeyboard,
-                },
-                parse_mode: "HTML",
-              },
-            ),
-          );
+          ctx.session.anyMessagesToDelete.push(await ctx.sendPhoto(photo));
         }
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply(message, {
+            parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: inlineKeyboard, // Your inline keyboard
+            },
+          }),
+        );
 
         ctx.scene.leave();
       },
