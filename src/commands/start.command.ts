@@ -119,6 +119,7 @@ export class StartCommand extends Command {
     this.bot.action("previous_vehicles_page", async (ctx) => {
       if (ctx.session.currentPage > 0) {
         ctx.session.currentPage -= 1;
+        await clearMessages(ctx);
         return ctx.scene.enter("my_vehicles_scene");
       }
     });
@@ -132,6 +133,7 @@ export class StartCommand extends Command {
       const totalPages = Math.ceil(ctx.session.vehicles.length / 5); // 10 vehicles per page
       if (ctx.session.currentPage < totalPages - 1) {
         ctx.session.currentPage += 1;
+        await clearMessages(ctx);
         return ctx.scene.enter("my_vehicles_scene");
       }
     });
@@ -161,7 +163,7 @@ export class StartCommand extends Command {
       if (ctx.session.vehicles && vehicleIndex <= ctx.session.vehicles.length) {
         ctx.session.currentVehicleID =
           ctx.session.vehicles[vehicleIndex - 1].id; // Adjust for 0-based index
-        console.log(`Opening vehicle ${vehicleIndex}`);
+        await clearMessages(ctx);
         return ctx.scene.enter("add_vehicle_scene");
       } else {
         await ctx.reply("Произошла ошибка: Автомобиль не найден.");
@@ -411,7 +413,8 @@ export class StartCommand extends Command {
       const totalPages = Math.ceil(vehicles.length / pageSize);
 
       if (vehicles.length > 0) {
-        let message = "Информация о ваших отчетах:\n\n";
+        let message = `Всего отчетов: <strong>${vehicles.length}</strong>\n`;
+        message += `Страница <strong>${currentPage + 1}</strong> из <strong>${totalPages}</strong>\n\n`;
         const numberEmojis = [
           "1️⃣",
           "2️⃣",
@@ -483,22 +486,27 @@ export class StartCommand extends Command {
 
         // Send or edit the message with vehicle information
 
-        await ctx.replyOrEditMessage(message, {
+        const keyboardOptions: Object = {
           reply_markup: {
             inline_keyboard: inlineKeyboard,
           },
           parse_mode: "HTML",
           disable_web_page_preview: true,
-        });
+        };
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply(message, keyboardOptions),
+        );
       } else {
         // Handle the case when no vehicles are available
-        await ctx.reply("У вас нет зарегистрированных машин.", {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: CLOSE_MENU, callback_data: "delete_vehicles_scene" }],
-            ],
-          },
-        });
+        ctx.session.anyMessagesToDelete.push(
+          await ctx.reply("У вас нет зарегистрированных отчетов.", {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: CLOSE_MENU, callback_data: "delete_vehicles_scene" }],
+              ],
+            },
+          }),
+        );
       }
 
       return ctx.scene.leave();

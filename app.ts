@@ -89,6 +89,7 @@ class Bot {
               photoUrl,
               {
                 caption: caption,
+                parse_mode: "HTML",
                 ...keyboardOptions,
               },
             );
@@ -96,6 +97,7 @@ class Bot {
         } else {
           ctx.session.canBeEditedMessage = await ctx.replyWithPhoto(photoUrl, {
             caption: caption,
+            parse_mode: "HTML",
             ...keyboardOptions,
           });
         }

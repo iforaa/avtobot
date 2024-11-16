@@ -49,6 +49,7 @@ export class AddVehicleCommand extends Command {
         const { reportsMessage, reportsInlineKeyboard } =
           ctx.session.previouseMessage;
         ctx.session.previouseMessage = null;
+        await clearMessages(ctx);
         await ctx.scene.enter("adding_car_scene");
         await ctx.replyOrEditMessage(reportsMessage, {
           reply_markup: {
@@ -57,6 +58,7 @@ export class AddVehicleCommand extends Command {
           parse_mode: "HTML",
         });
       } else {
+        await clearMessages(ctx);
         ctx.scene.enter("my_vehicles_scene");
       }
     });
@@ -191,15 +193,40 @@ export class AddVehicleCommand extends Command {
           { text: "↩️ Назад", callback_data: "go_to_vehicles_scene" },
         ]);
 
-        await ctx.replyOrEditMessage(
-          message, // New content
-          {
-            reply_markup: {
-              inline_keyboard: inlineKeyboard,
-            },
-            parse_mode: "HTML",
-          },
-        );
+        const allPhotos = (
+          await this.botService.getPhotosOfVehicle(vehicle.id)
+        ).filter((photo) => photo.photo_url.includes("photos/"));
+
+        if (allPhotos.length > 0) {
+          let photo =
+            allPhotos[0].photo_url.replace(
+              "photos/",
+              this.botService.datastoreURLFile(),
+            ) + "/photo";
+
+          ctx.session.anyMessagesToDelete.push(
+            await ctx.replyWithPhoto(photo, {
+              caption: message,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: inlineKeyboard, // Your inline keyboard
+              },
+            }),
+          );
+        } else {
+          ctx.session.anyMessagesToDelete.push(
+            await ctx.reply(
+              message, // New content
+              {
+                reply_markup: {
+                  inline_keyboard: inlineKeyboard,
+                },
+                parse_mode: "HTML",
+              },
+            ),
+          );
+        }
+
         ctx.scene.leave();
       },
     );
