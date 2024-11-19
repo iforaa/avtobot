@@ -74,6 +74,10 @@ export class BotService {
     return this.vehicleRepository.getUser(userID);
   }
 
+  async setPaymentContact(userID: number, contact: string): Promise<void> {
+    return this.vehicleRepository.setPaymentContact(userID, contact);
+  }
+
   async addVehicleByProvidedData(
     data: string,
     userID: number,
@@ -183,8 +187,16 @@ export class BotService {
     await this.vehicleRepository.addStarsToVehicle(stars, id);
   }
 
+  async getPhotoByID(id: number): Promise<any> {
+    return await this.vehicleRepository.getPhotoByID(id);
+  }
+
   async getPhotosOfVehicle(id: number, section?: number): Promise<any[]> {
     return await this.vehicleRepository.getPhotosByVehicleID(id, section);
+  }
+
+  async editVehicleCoverPhoto(vehicleID: number, photoID: number) {
+    await this.vehicleRepository.editVehicleCoverPhoto(vehicleID, photoID);
   }
 
   async addPhotoToVehicle(filename: string, id: number, section: number) {

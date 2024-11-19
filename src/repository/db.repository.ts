@@ -49,6 +49,11 @@ export class DBRepository {
     return result.id;
   }
 
+  async setPaymentContact(userID: number, contact: string): Promise<any> {
+    const query = "UPDATE users SET payment_contact=$1 WHERE user_id=$2";
+    const result = await this.dbService.query(query, [contact, userID]);
+  }
+
   async getUser(userID: number): Promise<any[]> {
     const query = "SELECT * FROM users WHERE user_id=$1";
     const result = await this.dbService.query(query, [userID]);
@@ -301,9 +306,26 @@ export class DBRepository {
     }
   }
 
+  async getPhotoByID(id: number): Promise<any> {
+    const query = `
+      SELECT * FROM photos WHERE id = $1;
+    `;
+    try {
+      const result = await this.dbService.query(query, [id]);
+      if (result.length > 0) {
+        return result;
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error("Error retrieving photo by id:", error);
+      throw error;
+    }
+  }
+
   async getPhotosByVehicleID(id: number, section?: number): Promise<any[]> {
     const query = `
-      SELECT *
+      SELECT p.id AS photo_id, p.photo_url, p.section, p.created_at
       FROM photos p
       JOIN vehicles v ON p.vehicle_id = v.id
       WHERE v.id = $1
@@ -316,12 +338,7 @@ export class DBRepository {
       const params = section !== undefined ? [id, section] : [id];
       const result = await this.dbService.query(query, params);
 
-      if (result.length > 0) {
-        // Extract photo URLs from the query result
-        return result;
-      } else {
-        return []; // No photos found for this vehicle
-      }
+      return result.length > 0 ? result : []; // Return the result or an empty array
     } catch (error) {
       console.error("Error retrieving photos for vehicle:", error);
       throw error;
@@ -368,6 +385,28 @@ export class DBRepository {
       return result[0];
     } else {
       return null;
+    }
+  }
+
+  async editVehicleCoverPhoto(
+    vehicleID: number,
+    photoID: number,
+  ): Promise<any> {
+    const query =
+      "UPDATE vehicles SET cover_photo = $1 WHERE id = $2 RETURNING *";
+    try {
+      const result = await this.dbService.query(query, [photoID, vehicleID]);
+
+      if (result === null || result.length === 0) {
+        console.error("Failed to update vehicle URL. Vehicle ID not found.");
+        return null;
+      }
+
+      console.log("Vehicle cover photo updated:", result[0]);
+      return result[0]; // Return the updated vehicle
+    } catch (error) {
+      console.error("Error updating vehicle cover photo:", error);
+      throw new Error("Error updating vehicle cover photo");
     }
   }
 
